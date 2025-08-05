@@ -315,9 +315,8 @@
         function closeModal() { modal.style.display = 'none'; currentTask = null; }
         function closeNewTaskModal() { newTaskModal.style.display = 'none'; }
 
-        async function saveChanges() {
+        function saveChanges() {
             if (!currentTask) return;
-            loadingSpinner.style.display = 'flex';
             
             const processesToSave = JSON.parse(JSON.stringify(currentTask.processes));
             const inputs = modal.querySelectorAll('input[type="checkbox"], input[type="text"][data-row], textarea[data-row]');
@@ -331,21 +330,26 @@
                 }
             });
             
-            try {
-                const docRef = doc(db, "apps", appId, "tasks", currentTask.id);
-                const taskToSave = {...currentTask, processes: processesToSave};
-                await setDoc(docRef, taskToSave);
-                alert('저장되었습니다.');
-                closeModal();
-            } catch (error) {
-                console.error("Error saving changes: ", error);
-                alert("공정 현황 저장에 실패했습니다.");
-            } finally {
-                loadingSpinner.style.display = 'none';
+            const taskToSave = {...currentTask, processes: processesToSave};
+            
+            // 1. Update local data first for immediate UI response
+            const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
+            if (taskIndex > -1) {
+                tasks[taskIndex] = taskToSave;
             }
+            localStorage.setItem('processCalendarTasks', JSON.stringify(tasks)); // Save to local storage
+            alert('저장되었습니다.');
+            closeModal();
+
+            // 2. Save to Firebase in the background
+            const docRef = doc(db, "apps", appId, "tasks", currentTask.id);
+            setDoc(docRef, taskToSave).catch(error => {
+                console.error("백그라운드 저장 실패: ", error);
+                // Optionally, notify user of sync failure
+            });
         }
         
-        async function saveNewTask() {
+        function saveNewTask() {
             const date = document.getElementById('new-task-date').value;
             const line = document.getElementById('new-task-line').value.trim();
             const unit = document.getElementById('new-task-unit').value.trim();
@@ -356,8 +360,6 @@
                 alert('반입일자, 반입라인, 반입호기는 필수 항목입니다.');
                 return;
             }
-
-            loadingSpinner.style.display = 'flex';
             
             const taskId = `${date}-${line}-${unit.replace(/ /g, '_')}`;
             const newTask = {
@@ -370,42 +372,57 @@
                 processes: generateProcessData()
             };
 
-            try {
-                const docRef = doc(db, "apps", appId, "tasks", taskId);
-                await setDoc(docRef, newTask);
-                closeNewTaskModal();
-            } catch (error) {
-                console.error("Error saving new task: ", error);
-                alert("새 작업 저장에 실패했습니다.");
-            } finally {
-                loadingSpinner.style.display = 'none';
-            }
+            // 1. Update local data first for immediate UI response
+            tasks.push(newTask);
+            localStorage.setItem('processCalendarTasks', JSON.stringify(tasks));
+            renderCalendar(currentYear, currentMonth);
+            closeNewTaskModal();
+
+            // 2. Save to Firebase in the background
+            const docRef = doc(db, "apps", appId, "tasks", taskId);
+            setDoc(docRef, newTask).catch(error => {
+                console.error("백그라운드 저장 실패: ", error);
+                // Optionally, notify user of sync failure
+            });
         }
 
         function subscribeToTasks() {
             const collectionRef = collection(db, "apps", appId, "tasks");
             onSnapshot(collectionRef, (snapshot) => {
                 tasks = snapshot.docs.map(doc => doc.data());
+                localStorage.setItem('processCalendarTasks', JSON.stringify(tasks)); // Sync local storage with Firebase
                 renderCalendar(currentYear, currentMonth);
                 loadingSpinner.style.display = 'none';
             }, (error) => {
-                console.error("Error fetching tasks:", error);
+                console.error("Firebase 실시간 연결 실패:", error);
+                alert("실시간 동기화에 실패했습니다. 저장된 오프라인 데이터로 시작합니다.");
                 loadingSpinner.style.display = 'none';
             });
         }
 
-        async function startApp() {
+        function startApp() {
             loadingSpinner.style.display = 'flex';
+            
+            // 1. Load local data first for speed
+            const savedTasks = localStorage.getItem('processCalendarTasks');
+            if (savedTasks) {
+                tasks = JSON.parse(savedTasks);
+            } else {
+                tasks = [];
+            }
+            renderCalendar(currentYear, currentMonth);
+            loadingSpinner.style.display = 'none'; // Hide spinner immediately
+
+            // 2. Then, connect to Firebase for real-time sync
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUserId = user.uid;
                     document.getElementById('userId').textContent = currentUserId;
-                    subscribeToTasks();
+                    subscribeToTasks(); // Start real-time listener
                 } else {
                     signInAnonymously(auth).catch(error => {
                         console.error("Anonymous sign-in failed:", error);
-                        alert(`익명 로그인 실패: ${error.message}. Firebase 설정을 확인해주세요.`);
-                        loadingSpinner.style.display = 'none';
+                        alert(`실시간 동기화를 위한 익명 로그인 실패: ${error.message}.`);
                     });
                 }
             });
