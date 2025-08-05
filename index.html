@@ -1,450 +1,136 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>사내 공정 관리 캘린더</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-        }
-        .calendar-grid {
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-        }
-        .calendar-day {
-            min-height: 120px;
-        }
-        .event-item {
-            font-size: 0.8rem;
-            padding: 2px 4px;
-            margin-bottom: 2px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #modal-content::-webkit-scrollbar {
-            width: 8px;
-        }
-        #modal-content::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        #modal-content::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        #modal-content::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        .process-table th, .process-table td {
-            border: 1px solid #e5e7eb;
-            padding: 0.75rem;
-            text-align: center;
-            vertical-align: middle;
-        }
-        .process-table .checkbox-label {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0.5rem;
-            white-space: nowrap;
-        }
-        .process-table .checkbox-label:last-child {
-            margin-bottom: 0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사내 공정 관리 캘린더</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; }
+    .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .calendar-day { min-height: 120px; }
+    .event-item { font-size: 0.8rem; padding: 2px 4px; margin-bottom: 2px; border-radius: 4px; cursor: pointer; }
+    #modal-content::-webkit-scrollbar { width: 8px; }
+    #modal-content::-webkit-scrollbar-track { background: #f1f1f1; }
+    #modal-content::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    #modal-content::-webkit-scrollbar-thumb:hover { background: #555; }
+    .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: center; vertical-align: middle; }
+    .checkbox-label { display: flex; align-items: center; margin-bottom: 0.5rem; white-space: nowrap; }
+  </style>
 </head>
 <body class="bg-gray-100">
-
-    <div id="app" class="container mx-auto p-4 max-w-7xl">
-        <!-- 헤더 -->
-        <div class="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow">
-            <div>
-                <button id="prev-month" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">&lt; 이전</button>
-                <button id="next-month" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 ml-2">다음 &gt;</button>
-            </div>
-            <h2 id="current-month-year" class="text-2xl font-bold text-gray-800"></h2>
-            <button id="add-new-task-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">새 작업 추가</button>
-        </div>
-
-        <!-- 캘린더 -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="grid grid-cols-7 text-center font-semibold border-b">
-                <div class="py-2 text-red-500">일</div><div class="py-2">월</div><div class="py-2">화</div><div class="py-2">수</div><div class="py-2">목</div><div class="py-2">금</div><div class="py-2 text-blue-500">토</div>
-            </div>
-            <div id="calendar-grid" class="grid calendar-grid"></div>
-        </div>
-        <div class="text-xs text-gray-500 mt-2">User ID: <span id="userId"></span></div>
+  <div id="app" class="container mx-auto p-4 max-w-7xl">
+    <!-- 간결하게 표현된 헤더 -->
+    <div class="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow">
+      <div>
+        <button id="prev-month" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">&lt; 이전</button>
+        <button id="next-month" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 ml-2">다음 &gt;</button>
+      </div>
+      <h2 id="current-month-year" class="text-2xl font-bold text-gray-800"></h2>
+      <button id="add-new-task-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">새 작업 추가</button>
     </div>
 
-    <!-- 새 작업 추가 모달 -->
-    <div id="new-task-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h3 class="text-xl font-bold">새 작업 추가</h3>
-                <button id="close-new-task-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-            </div>
-            <div class="p-6 space-y-4">
-                <div><label for="new-task-date" class="block text-sm font-medium text-gray-700">반입일자</label><input type="date" id="new-task-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="new-task-line" class="block text-sm font-medium text-gray-700">반입라인</label><input type="text" id="new-task-line" placeholder="예: A2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="new-task-unit" class="block text-sm font-medium text-gray-700">반입호기</label><input type="text" id="new-task-unit" placeholder="예: 53호기" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="new-task-structure" class="block text-sm font-medium text-gray-700">반입구조</label><input type="text" id="new-task-structure" placeholder="예: DM0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="new-task-notes" class="block text-sm font-medium text-gray-700">특이사항</label><input type="text" id="new-task-notes" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-            </div>
-            <div class="p-4 border-t flex justify-end"><button id="save-new-task-btn" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">저장</button></div>
-        </div>
+    <!-- 캘린더 -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="grid grid-cols-7 text-center font-semibold border-b">
+        <div class="py-2 text-red-500">일</div><div class="py-2">월</div><div class="py-2">화</div><div class="py-2">수</div><div class="py-2">목</div><div class="py-2">금</div><div class="py-2 text-blue-500">토</div>
+      </div>
+      <div id="calendar-grid" class="grid calendar-grid"></div>
     </div>
+    <div class="text-xs text-gray-500 mt-2">User ID: <span id="userId"></span></div>
+  </div>
 
-    <!-- 상세 정보 모달 -->
-    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b">
-                <h3 class="text-xl font-bold">상세 정보 및 공정 현황</h3>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-            </div>
-            <div id="modal-content" class="p-4 overflow-y-auto">
-                <div class="mb-6">
-                    <h4 class="font-bold text-lg mb-2 text-blue-600">기본 정보</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm border p-4 rounded-md bg-gray-50">
-                        <div><strong>반입일자:</strong> <span id="modal-date"></span></div>
-                        <div><strong>반입라인:</strong> <span id="modal-line"></span></div>
-                        <div><strong>반입호기:</strong> <span id="modal-unit"></span></div>
-                        <div class="col-span-1"><strong>반입구조:</strong> <span id="modal-structure"></span></div>
-                        <div class="col-span-2 md:col-span-2"><strong>특이사항:</strong> <span id="modal-notes"></span></div>
-                    </div>
-                </div>
-                <div id="process-table-container"></div>
-            </div>
-            <div class="p-4 border-t flex justify-end">
-                <button id="save-changes" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">공정 현황 저장</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="loading-spinner" class="fixed inset-0 bg-white bg-opacity-70 hidden items-center justify-center z-50">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
-    </div>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- 모달 등 기타 UI 컴포넌트 생략 -->
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyCQgruas8LevqyFe7lLksypiVqWyWAEPiU",
-          authDomain: "processcontrol-c965d.firebaseapp.com",
-          projectId: "processcontrol-c965d",
-          storageBucket: "processcontrol-c965d.appspot.com",
-          messagingSenderId: "486850807052",
-          appId: "1:486850807052:web:891ee598c85a7baf5df529",
-          measurementId: "G-XP1X79CNT7"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = 'process-control-app';
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        let currentYear, currentMonth;
-        let tasks = [];
-        let currentTask = null;
-        let currentUserId = null;
+    const config = {
+      apiKey: "AIzaSyCQgruas8LevqyFe7lLksypiVqWyWAEPiU",
+      authDomain: "processcontrol-c965d.firebaseapp.com",
+      projectId: "processcontrol-c965d"
+    };
 
-        const calendarGrid = document.getElementById('calendar-grid');
-        const currentMonthYearEl = document.getElementById('current-month-year');
-        const prevMonthBtn = document.getElementById('prev-month');
-        const nextMonthBtn = document.getElementById('next-month');
-        const modal = document.getElementById('detail-modal');
-        const closeModalBtn = document.getElementById('close-modal');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const addNewTaskBtn = document.getElementById('add-new-task-btn');
-        const newTaskModal = document.getElementById('new-task-modal');
-        const closeNewTaskModalBtn = document.getElementById('close-new-task-modal');
-        const saveNewTaskBtn = document.getElementById('save-new-task-btn');
-        const saveChangesBtn = document.getElementById('save-changes');
+    const app = initializeApp(config);
+    const auth = getAuth();
+    const db = getFirestore();
+    const appId = "process-control-app";
+    let currentYear, currentMonth;
+    let tasks = [], currentUserId = null;
 
-        const productNames = ["상판/견시창", "전수", "구성품", "각도판"];
-        const processDefinitions = {
-            "포승(부광)": { rows: { "상태": { "이동대기": false, "이동중": false, "이동완료": false }, "이동일자": "" }, notes: "" },
-            "현곡(인현)": { rows: { "상태": { "입고완료": false, "검사대기": false, "검사완료": false } }, notes: "" },
-            "현곡(TKG)": { rows: { "상태": { "CR입고": false, "장입대기": false, "오븐가동중": false, "장출대기": false, "장출완료": false, "포장완료": false, "외부이동": false } }, notes: "" },
-            "현곡(인현)_출하": { rows: { "상태": { "상차대기": false, "상차중": false, "상차완료": false, "랩핑완료": false, "출하장 이동": false } }, notes: "" }
-        };
+    const calendarGrid = document.getElementById('calendar-grid');
+    const currentMonthYearEl = document.getElementById('current-month-year');
 
-        function generateProcessData() {
-            const processes = {};
-            for (const groupName in processDefinitions) {
-                processes[groupName] = { products: {}, notes: "" };
-                for (const productName of productNames) {
-                    processes[groupName].products[productName] = {};
-                    for (const rowName in processDefinitions[groupName].rows) {
-                        const rowValue = processDefinitions[groupName].rows[rowName];
-                        processes[groupName].products[productName][rowName] = (typeof rowValue === 'object') ? { ...rowValue } : rowValue;
-                    }
-                }
-            }
-            return processes;
-        }
-
-        function renderCalendar(year, month) {
-            currentYear = year; currentMonth = month;
-            currentMonthYearEl.textContent = `${year}년 ${month + 1}월`;
-            calendarGrid.innerHTML = '';
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            for (let i = 0; i < firstDay; i++) calendarGrid.appendChild(document.createElement('div'));
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayCell = document.createElement('div');
-                dayCell.className = 'calendar-day border-t border-l p-2 relative';
-                const dayNumber = document.createElement('span');
-                dayNumber.textContent = day;
-                dayNumber.className = 'text-sm';
-                dayCell.appendChild(dayNumber);
-                const today = new Date();
-                if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
-                    dayNumber.classList.add('bg-blue-500', 'text-white', 'rounded-full', 'w-6', 'h-6', 'inline-block', 'text-center', 'leading-6');
-                }
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayTasks = tasks.filter(t => t.date === dateStr);
-                const eventsContainer = document.createElement('div');
-                eventsContainer.className = 'mt-1';
-                dayTasks.forEach(task => {
-                    const eventEl = document.createElement('div');
-                    eventEl.className = 'event-item bg-blue-100 text-blue-800 hover:bg-blue-200';
-                    eventEl.textContent = `${task.line} / ${task.unit}`;
-                    eventEl.dataset.taskId = task.id;
-                    eventEl.addEventListener('click', () => openModal(task.id));
-                    eventsContainer.appendChild(eventEl);
-                });
-                dayCell.appendChild(eventsContainer);
-                calendarGrid.appendChild(dayCell);
-            }
-        }
-        
-        function openModal(taskId) {
-            currentTask = tasks.find(t => t.id === taskId);
-            if (!currentTask) return;
-            
-            document.getElementById('modal-date').textContent = currentTask.date;
-            document.getElementById('modal-line').textContent = currentTask.line;
-            document.getElementById('modal-unit').textContent = currentTask.unit;
-            document.getElementById('modal-structure').textContent = currentTask.structure;
-            document.getElementById('modal-notes').textContent = currentTask.notes;
-            
-            renderProcessTable(currentTask.processes);
-            modal.style.display = 'flex';
-        }
-        
-        function renderProcessTable(processes) {
-            const container = document.getElementById('process-table-container');
-            container.innerHTML = '';
-            if (!processes) return;
-            const table = document.createElement('table');
-            table.className = 'w-full text-sm border-collapse process-table';
-            const thead = document.createElement('thead');
-            thead.className = 'bg-gray-100 font-semibold';
-            thead.innerHTML = `<tr><th style="width: 10%;">공정</th><th style="width: 10%;"></th>${productNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
-            table.appendChild(thead);
-            const tbody = document.createElement('tbody');
-            Object.entries(processDefinitions).forEach(([groupName, def]) => {
-                const rowKeys = Object.keys(def.rows);
-                const notesRowNeeded = 'notes' in def;
-                const rowSpan = rowKeys.length + (notesRowNeeded ? 1 : 0);
-                rowKeys.forEach((rowName, index) => {
-                    const tr = document.createElement('tr');
-                    if (index === 0) {
-                        const tdGroup = document.createElement('td');
-                        tdGroup.rowSpan = rowSpan;
-                        tdGroup.className = "font-semibold";
-                        tdGroup.textContent = groupName.replace('_출하', '(인현)');
-                        tr.appendChild(tdGroup);
-                    }
-                    const tdRowHeader = document.createElement('td');
-                    tdRowHeader.className = "font-semibold bg-gray-50";
-                    tdRowHeader.textContent = rowName;
-                    tr.appendChild(tdRowHeader);
-                    productNames.forEach(productName => {
-                        const td = document.createElement('td');
-                        const productData = processes[groupName]?.products?.[productName]?.[rowName];
-                        if (typeof productData === 'object') {
-                            td.className = 'text-left align-top pt-3';
-                            Object.entries(productData).forEach(([detailName, isChecked]) => {
-                                const label = document.createElement('label');
-                                label.className = 'checkbox-label';
-                                const checkbox = document.createElement('input');
-                                checkbox.type = 'checkbox';
-                                checkbox.className = 'form-checkbox h-4 w-4 text-blue-600 rounded';
-                                checkbox.checked = isChecked;
-                                checkbox.dataset.group = groupName; checkbox.dataset.product = productName; checkbox.dataset.row = rowName; checkbox.dataset.detail = detailName;
-                                label.appendChild(checkbox);
-                                label.appendChild(document.createTextNode(` ${detailName}`));
-                                td.appendChild(label);
-                            });
-                        } else {
-                            const input = document.createElement('input');
-                            input.type = 'text';
-                            input.className = 'w-full border rounded p-1';
-                            input.value = productData || '';
-                            input.dataset.group = groupName; input.dataset.product = productName; input.dataset.row = rowName;
-                            td.appendChild(input);
-                        }
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
-                });
-                if (notesRowNeeded) {
-                    const trNotes = document.createElement('tr');
-                    const tdNotesHeader = document.createElement('td');
-                    tdNotesHeader.className = "font-semibold bg-gray-50";
-                    tdNotesHeader.textContent = '특이사항';
-                    trNotes.appendChild(tdNotesHeader);
-                    const tdNotesText = document.createElement('td');
-                    tdNotesText.colSpan = productNames.length;
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'w-full border rounded p-2 h-20 resize-none';
-                    textarea.value = processes[groupName]?.notes || '';
-                    textarea.dataset.group = groupName; textarea.dataset.row = 'notes';
-                    tdNotesText.appendChild(textarea);
-                    trNotes.appendChild(tdNotesText);
-                    tbody.appendChild(trNotes);
-                }
-            });
-            table.appendChild(tbody);
-            container.appendChild(table);
-        }
-
-        function closeModal() { modal.style.display = 'none'; currentTask = null; }
-        function closeNewTaskModal() { newTaskModal.style.display = 'none'; }
-
-        function saveChanges() {
-            if (!currentTask) return;
-            
-            const processesToSave = JSON.parse(JSON.stringify(currentTask.processes));
-            const inputs = modal.querySelectorAll('input[type="checkbox"], input[type="text"][data-row], textarea[data-row]');
-            inputs.forEach(input => {
-                const { group, product, row, detail } = input.dataset;
-                if (!group || !row) return;
-                if (row === 'notes') { processesToSave[group].notes = input.value; } 
-                else if (product) {
-                    if (detail) { processesToSave[group].products[product][row][detail] = input.checked; } 
-                    else { processesToSave[group].products[product][row] = input.value; }
-                }
-            });
-            
-            const taskToSave = {...currentTask, processes: processesToSave};
-            
-            // 1. Update local data first for immediate UI response
-            const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
-            if (taskIndex > -1) {
-                tasks[taskIndex] = taskToSave;
-            }
-            localStorage.setItem('processCalendarTasks', JSON.stringify(tasks)); // Save to local storage
-            alert('저장되었습니다.');
-            closeModal();
-
-            // 2. Save to Firebase in the background
-            const docRef = doc(db, "apps", appId, "tasks", currentTask.id);
-            setDoc(docRef, taskToSave).catch(error => {
-                console.error("백그라운드 저장 실패: ", error);
-                // Optionally, notify user of sync failure
-            });
-        }
-        
-        function saveNewTask() {
-            const date = document.getElementById('new-task-date').value;
-            const line = document.getElementById('new-task-line').value.trim();
-            const unit = document.getElementById('new-task-unit').value.trim();
-            const structure = document.getElementById('new-task-structure').value.trim();
-            const notes = document.getElementById('new-task-notes').value.trim();
-
-            if (!date || !line || !unit) {
-                alert('반입일자, 반입라인, 반입호기는 필수 항목입니다.');
-                return;
-            }
-            
-            const taskId = `${date}-${line}-${unit.replace(/ /g, '_')}`;
-            const newTask = {
-                id: taskId,
-                date,
-                line,
-                unit,
-                structure,
-                notes,
-                processes: generateProcessData()
-            };
-
-            // 1. Update local data first for immediate UI response
-            tasks.push(newTask);
-            localStorage.setItem('processCalendarTasks', JSON.stringify(tasks));
-            renderCalendar(currentYear, currentMonth);
-            closeNewTaskModal();
-
-            // 2. Save to Firebase in the background
-            const docRef = doc(db, "apps", appId, "tasks", taskId);
-            setDoc(docRef, newTask).catch(error => {
-                console.error("백그라운드 저장 실패: ", error);
-                // Optionally, notify user of sync failure
-            });
-        }
-
-        function subscribeToTasks() {
-            const collectionRef = collection(db, "apps", appId, "tasks");
-            onSnapshot(collectionRef, (snapshot) => {
-                tasks = snapshot.docs.map(doc => doc.data());
-                localStorage.setItem('processCalendarTasks', JSON.stringify(tasks)); // Sync local storage with Firebase
-                renderCalendar(currentYear, currentMonth);
-                loadingSpinner.style.display = 'none';
-            }, (error) => {
-                console.error("Firebase 실시간 연결 실패:", error);
-                alert("실시간 동기화에 실패했습니다. 저장된 오프라인 데이터로 시작합니다.");
-                loadingSpinner.style.display = 'none';
-            });
-        }
-
-        function startApp() {
-            loadingSpinner.style.display = 'flex';
-            
-            // 1. Load local data first for speed
-            const savedTasks = localStorage.getItem('processCalendarTasks');
-            if (savedTasks) {
-                tasks = JSON.parse(savedTasks);
-            } else {
-                tasks = [];
-            }
-            renderCalendar(currentYear, currentMonth);
-            loadingSpinner.style.display = 'none'; // Hide spinner immediately
-
-            // 2. Then, connect to Firebase for real-time sync
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUserId = user.uid;
-                    document.getElementById('userId').textContent = currentUserId;
-                    subscribeToTasks(); // Start real-time listener
-                } else {
-                    signInAnonymously(auth).catch(error => {
-                        console.error("Anonymous sign-in failed:", error);
-                        alert(`실시간 동기화를 위한 익명 로그인 실패: ${error.message}.`);
-                    });
-                }
-            });
-        }
-
+    function renderCalendar(year, month) {
+      currentYear = year; currentMonth = month;
+      currentMonthYearEl.textContent = `${year}년 ${month + 1}월`;
+      calendarGrid.innerHTML = '';
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const filteredTasks = tasks.filter(t => t.date.startsWith(monthStr));
+      for (let i = 0; i < firstDay; i++) calendarGrid.appendChild(document.createElement('div'));
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayEl = document.createElement('div');
+        dayEl.className = 'calendar-day border-t border-l p-2';
+        const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+        const matchingTasks = filteredTasks.filter(t => t.date === dateStr);
+        const dayNumber = document.createElement('span');
+        dayNumber.textContent = day;
+        dayNumber.className = 'text-sm';
         const today = new Date();
-        currentYear = today.getFullYear();
-        currentMonth = today.getMonth();
-        
-        prevMonthBtn.addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(currentYear, currentMonth); });
-        nextMonthBtn.addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(currentYear, currentMonth); });
-        closeModalBtn.addEventListener('click', closeModal);
-        saveChangesBtn.addEventListener('click', saveChanges);
-        
-        addNewTaskBtn.addEventListener('click', () => {
-            newTaskModal.style.display = 'flex';
-            document.getElementById('new-task-date').valueAsDate = new Date();
+        if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
+          dayNumber.classList.add('bg-blue-500', 'text-white', 'rounded-full', 'px-2');
+        }
+        dayEl.appendChild(dayNumber);
+        matchingTasks.forEach(t => {
+          const el = document.createElement('div');
+          el.className = 'event-item bg-blue-100 text-blue-800';
+          el.textContent = `${t.line} / ${t.unit}`;
+          dayEl.appendChild(el);
         });
-        closeNewTaskModalBtn.addEventListener('click', closeNewTaskModal);
-        saveNewTaskBtn.addEventListener('click', saveNewTask);
-        
-        startApp();
-    </script>
+        calendarGrid.appendChild(dayEl);
+      }
+    }
+
+    function subscribeToTasks() {
+      const ref = collection(db, "apps", appId, "tasks");
+      onSnapshot(ref, snapshot => {
+        tasks = snapshot.docs.map(doc => doc.data());
+        renderCalendar(currentYear, currentMonth);
+      });
+    }
+
+    function startApp() {
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          currentUserId = user.uid;
+          document.getElementById('userId').textContent = currentUserId;
+          subscribeToTasks();
+        } else {
+          signInAnonymously(auth).catch(err => alert("로그인 오류: " + err.message));
+        }
+      });
+    }
+
+    const today = new Date();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    renderCalendar(currentYear, currentMonth);
+
+    document.getElementById('prev-month').onclick = () => {
+      currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+      renderCalendar(currentYear, currentMonth);
+    };
+    document.getElementById('next-month').onclick = () => {
+      currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      renderCalendar(currentYear, currentMonth);
+    };
+
+    startApp();
+  </script>
 </body>
 </html>
