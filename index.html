@@ -114,7 +114,9 @@
                 </div>
                 <div id="process-table-container"></div>
             </div>
-            <div class="p-4 border-t flex justify-end">
+            <!-- *** FIX: Added a delete button and adjusted layout *** -->
+            <div class="p-4 border-t flex justify-between items-center">
+                <button id="delete-task-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">삭제</button>
                 <button id="save-changes" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">공정 현황 저장</button>
             </div>
         </div>
@@ -127,9 +129,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // *** FIX: Imported deleteDoc function ***
+        import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // *** FIX: Inserted the user's actual Firebase configuration. ***
         const firebaseConfig = {
           apiKey: "AIzaSyAcIM8AtD9pwtJHH9mqX3q1iDUIGOOUqZ4",
           authDomain: "psprocesscontrol.firebaseapp.com",
@@ -143,7 +145,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'process-control-app'; // A unique ID for this app's data collection
+        const appId = 'process-control-app';
 
         let currentYear, currentMonth;
         let tasks = [];
@@ -162,6 +164,8 @@
         const closeNewTaskModalBtn = document.getElementById('close-new-task-modal');
         const saveNewTaskBtn = document.getElementById('save-new-task-btn');
         const saveChangesBtn = document.getElementById('save-changes');
+        // *** FIX: Get the new delete button element ***
+        const deleteTaskBtn = document.getElementById('delete-task-btn');
 
         const productNames = ["상판/견시창", "전수", "구성품", "각도판"];
         const processDefinitions = {
@@ -383,6 +387,29 @@
             }
         }
 
+        // *** FIX: Added deleteTask function ***
+        async function deleteTask() {
+            if (!currentTask) return;
+
+            // Using a simple confirm dialog for user verification.
+            // For a better UX, a custom modal could be implemented.
+            if (!confirm(`'${currentTask.line} / ${currentTask.unit}' 작업을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+
+            loadingSpinner.style.display = 'flex';
+            try {
+                const docRef = doc(db, "apps", appId, "tasks", currentTask.id);
+                await deleteDoc(docRef);
+                closeModal();
+            } catch (error) {
+                console.error("Error deleting task: ", error);
+                alert("작업 삭제에 실패했습니다.");
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
         function subscribeToTasks() {
             loadingSpinner.style.display = 'flex';
             const collectionRef = collection(db, "apps", appId, "tasks");
@@ -428,6 +455,9 @@
         });
         closeNewTaskModalBtn.addEventListener('click', closeNewTaskModal);
         saveNewTaskBtn.addEventListener('click', saveNewTask);
+        
+        // *** FIX: Added event listener for the delete button ***
+        deleteTaskBtn.addEventListener('click', deleteTask);
         
         startApp();
     </script>
