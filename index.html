@@ -126,25 +126,24 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // *** FIX: Replaced placeholder with the correct dynamic Firebase configuration loader. ***
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCQgruas8LevqyFe7lLksypiVqWyWAEPiU",
-  authDomain: "processcontrol-c965d.firebaseapp.com",
-  projectId: "processcontrol-c965d",
-  storageBucket: "processcontrol-c965d.firebasestorage.app",
-  messagingSenderId: "486850807052",
-  appId: "1:486850807052:web:891ee598c85a7baf5df529",
-  measurementId: "G-XP1X79CNT7"
-};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-process-app';
-
+        // *** FIX: Replaced placeholder with the user's actual Firebase configuration. ***
+        const firebaseConfig = {
+          apiKey: "AIzaSyCQgruas8LevqyFe7lLksypiVqWyWAEPiU",
+          authDomain: "processcontrol-c965d.firebaseapp.com",
+          projectId: "processcontrol-c965d",
+          storageBucket: "processcontrol-c965d.appspot.com",
+          messagingSenderId: "486850807052",
+          appId: "1:486850807052:web:891ee598c85a7baf5df529",
+          measurementId: "G-XP1X79CNT7"
+        };
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = 'process-control-app'; // 고정된 앱 ID 사용
 
         let currentYear, currentMonth;
         let tasks = [];
@@ -334,7 +333,7 @@ const firebaseConfig = {
             });
             
             try {
-                const docRef = doc(db, "artifacts", appId, "public", "data", "tasks", currentTask.id);
+                const docRef = doc(db, "apps", appId, "tasks", currentTask.id);
                 const taskToSave = {...currentTask, processes: processesToSave};
                 await setDoc(docRef, taskToSave);
                 alert('저장되었습니다.');
@@ -373,7 +372,7 @@ const firebaseConfig = {
             };
 
             try {
-                const docRef = doc(db, "artifacts", appId, "public", "data", "tasks", taskId);
+                const docRef = doc(db, "apps", appId, "tasks", taskId);
                 await setDoc(docRef, newTask);
                 closeNewTaskModal();
             } catch (error) {
@@ -385,7 +384,7 @@ const firebaseConfig = {
         }
 
         function subscribeToTasks() {
-            const collectionRef = collection(db, "artifacts", appId, "public", "data", "tasks");
+            const collectionRef = collection(db, "apps", appId, "tasks");
             onSnapshot(collectionRef, (snapshot) => {
                 tasks = snapshot.docs.map(doc => doc.data());
                 renderCalendar(currentYear, currentMonth);
@@ -404,21 +403,13 @@ const firebaseConfig = {
                     document.getElementById('userId').textContent = currentUserId;
                     subscribeToTasks();
                 } else {
-                    document.getElementById('userId').textContent = 'Not logged in';
-                    loadingSpinner.style.display = 'none';
+                    signInAnonymously(auth).catch(error => {
+                        console.error("Anonymous sign-in failed:", error);
+                        alert(`익명 로그인 실패: ${error.message}. Firebase 설정을 확인해주세요.`);
+                        loadingSpinner.style.display = 'none';
+                    });
                 }
             });
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else { 
-                    await signInAnonymously(auth); 
-                }
-            } catch (error) {
-                console.error("Authentication failed:", error);
-                alert(`인증 실패: ${error.message}. Firebase 설정(firebaseConfig)이 올바른지 확인해주세요.`);
-                loadingSpinner.style.display = 'none';
-            }
         }
 
         const today = new Date();
