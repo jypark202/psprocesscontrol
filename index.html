@@ -120,7 +120,7 @@
         </div>
     </div>
     
-    <div id="loading-spinner" class="fixed inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
+    <div id="loading-spinner" class="fixed inset-0 bg-white bg-opacity-70 hidden items-center justify-center z-50">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
     </div>
     
@@ -129,7 +129,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // *** FIX: Replaced placeholder with the user's actual Firebase configuration. ***
         const firebaseConfig = {
           apiKey: "AIzaSyCQgruas8LevqyFe7lLksypiVqWyWAEPiU",
           authDomain: "processcontrol-c965d.firebaseapp.com",
@@ -143,7 +142,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'process-control-app'; // 고정된 앱 ID 사용
+        const appId = 'process-control-app';
 
         let currentYear, currentMonth;
         let tasks = [];
