@@ -154,7 +154,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // *** FIX: Import Firebase Storage modules ***
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         const firebaseConfig = {
@@ -170,7 +169,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const storage = getStorage(app); // *** FIX: Initialize Firebase Storage ***
+        const storage = getStorage(app);
         const appId = 'process-control-app';
 
         let currentYear, currentMonth;
@@ -379,8 +378,8 @@
             try {
                 const imagePath = `images/${currentTask.id}/${groupName}-${productName}-${rowName}-${Date.now()}-${file.name}`;
                 const storageRef = ref(storage, imagePath);
-                await uploadBytes(storageRef, file);
-                const downloadURL = await getDownloadURL(storageRef);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
 
                 currentTask.processes[groupName].products[productName][rowName].image = downloadURL;
                 renderProcessTable(currentTask.processes);
