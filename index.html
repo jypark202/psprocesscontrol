@@ -382,7 +382,9 @@
                 const downloadURL = await getDownloadURL(snapshot.ref);
 
                 currentTask.processes[groupName].products[productName][rowName].image = downloadURL;
-                renderProcessTable(currentTask.processes);
+                
+                await saveChanges(true); // Pass a flag to avoid showing alert
+                renderProcessTable(currentTask.processes); // Re-render table after save
             } catch (error) {
                 console.error("Image upload failed:", error);
                 alert("이미지 업로드에 실패했습니다.");
@@ -400,9 +402,9 @@
         function closeNewTaskModal() { newTaskModal.style.display = 'none'; }
         function closeImageViewer() { imageViewerModal.style.display = 'none'; }
 
-        async function saveChanges() {
+        async function saveChanges(isSilent = false) {
             if (!currentTask) return;
-            loadingSpinner.style.display = 'flex';
+            if (!isSilent) loadingSpinner.style.display = 'flex';
             
             const processesToSave = JSON.parse(JSON.stringify(currentTask.processes));
             const inputs = modal.querySelectorAll('input[type="checkbox"], input[type="text"][data-row], textarea[data-row]');
@@ -430,13 +432,15 @@
                 const docRef = doc(db, "apps", appId, "tasks", currentTask.id);
                 const taskToSave = {...currentTask, processes: processesToSave};
                 await setDoc(docRef, taskToSave);
-                alert('저장되었습니다.');
-                closeModal();
+                if (!isSilent) {
+                    alert('저장되었습니다.');
+                    closeModal();
+                }
             } catch (error) {
                 console.error("Error saving changes: ", error);
-                alert("공정 현황 저장에 실패했습니다.");
+                if (!isSilent) alert("공정 현황 저장에 실패했습니다.");
             } finally {
-                loadingSpinner.style.display = 'none';
+                if (!isSilent) loadingSpinner.style.display = 'none';
             }
         }
         
@@ -532,7 +536,7 @@
         prevMonthBtn.addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(currentYear, currentMonth); });
         nextMonthBtn.addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(currentYear, currentMonth); });
         closeModalBtn.addEventListener('click', closeModal);
-        saveChangesBtn.addEventListener('click', saveChanges);
+        saveChangesBtn.addEventListener('click', () => saveChanges(false));
         deleteTaskBtn.addEventListener('click', deleteTask);
         
         addNewTaskBtn.addEventListener('click', () => {
