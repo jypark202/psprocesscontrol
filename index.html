@@ -54,8 +54,22 @@
         /* *** FIX: Added styles for the sticky header *** */
         .sticky-header {
             position: sticky;
-            top: 0;
+            top: -1px; /* To ensure border visibility */
             z-index: 10;
+        }
+        .image-upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            cursor: pointer;
+            border-radius: 0.25rem;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -125,6 +139,12 @@
             </div>
         </div>
     </div>
+
+    <!-- 이미지 크게 보기 모달 -->
+    <div id="image-viewer-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <img id="full-image-view" src="" class="max-w-[90vw] max-h-[90vh] object-contain">
+        <button id="close-image-viewer" class="absolute top-4 right-4 text-white text-4xl">&times;</button>
+    </div>
     
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -144,13 +164,16 @@
             const saveNewTaskBtn = document.getElementById('save-new-task-btn');
             const saveChangesBtn = document.getElementById('save-changes');
             const deleteTaskBtn = document.getElementById('delete-task-btn');
+            const imageViewerModal = document.getElementById('image-viewer-modal');
+            const fullImageView = document.getElementById('full-image-view');
+            const closeImageViewerBtn = document.getElementById('close-image-viewer');
 
             const productNames = ["상판/견시창", "전수", "구성품", "각도판"];
             const processDefinitions = {
-                "포승(부광)": { rows: { "상태": { "이동대기": false, "이동중": false, "이동완료": false }, "이동일자": "" }, notes: "" },
-                "현곡(인현)": { rows: { "상태": { "입고완료": false, "검사대기": false, "검사완료": false } }, notes: "" },
-                "현곡(TKG)": { rows: { "상태": { "CR입고": false, "장입대기": false, "오븐가동중": false, "장출대기": false, "장출완료": false, "포장완료": false, "외부이동": false } }, notes: "" },
-                "현곡(인현)_출하": { rows: { "상태": { "상차대기": false, "상차중": false, "상차완료": false, "랩핑완료": false, "출하장 이동": false } }, notes: "" }
+                "포승(부광)": { rows: { "상태": { "이동대기": false, "이동중": false, "이동완료": false, "image": null }, "이동일자": "" }, notes: "" },
+                "현곡(인현)": { rows: { "상태": { "입고완료": false, "검사대기": false, "검사완료": false, "image": null } }, notes: "" },
+                "현곡(TKG)": { rows: { "상태": { "CR입고": false, "장입대기": false, "오븐가동중": false, "장출대기": false, "장출완료": false, "포장완료": false, "외부이동": false, "image": null } }, notes: "" },
+                "현곡(인현)_출하": { rows: { "상태": { "상차대기": false, "상차중": false, "상차완료": false, "랩핑완료": false, "출하장 이동": false, "image": null } }, notes: "" }
             };
 
             function generateProcessData() {
@@ -237,7 +260,6 @@
                 const table = document.createElement('table');
                 table.className = 'w-full text-sm border-collapse process-table';
                 const thead = document.createElement('thead');
-                // *** FIX: Added sticky-header class to the table header ***
                 thead.className = 'bg-gray-100 font-semibold sticky-header';
                 thead.innerHTML = `<tr><th style="width: 10%;">공정</th><th style="width: 10%;"></th>${productNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
                 table.appendChild(thead);
@@ -265,6 +287,7 @@
                             if (typeof productData === 'object') {
                                 td.className = 'text-left align-top pt-3';
                                 Object.entries(productData).forEach(([detailName, isChecked]) => {
+                                    if (detailName === 'image') return; // Don't create checkbox for image
                                     const label = document.createElement('label');
                                     label.className = 'checkbox-label';
                                     const checkbox = document.createElement('input');
@@ -276,6 +299,32 @@
                                     label.appendChild(document.createTextNode(` ${detailName}`));
                                     td.appendChild(label);
                                 });
+                                // Add image upload button and thumbnail
+                                const imageContainer = document.createElement('div');
+                                imageContainer.className = 'image-upload-container mt-2';
+                                const uploadBtn = document.createElement('button');
+                                uploadBtn.textContent = '+';
+                                uploadBtn.className = 'w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-lg';
+                                const fileInput = document.createElement('input');
+                                fileInput.type = 'file';
+                                fileInput.accept = 'image/*';
+                                fileInput.className = 'hidden';
+                                uploadBtn.onclick = () => fileInput.click();
+                                fileInput.onchange = (e) => handleImageUpload(e, groupName, productName, rowName);
+                                
+                                imageContainer.appendChild(uploadBtn);
+                                
+                                const imageData = productData.image;
+                                if(imageData) {
+                                    const thumbnail = document.createElement('img');
+                                    thumbnail.src = imageData;
+                                    thumbnail.className = 'thumbnail';
+                                    thumbnail.onclick = () => showFullImage(imageData);
+                                    imageContainer.appendChild(thumbnail);
+                                }
+                                
+                                td.appendChild(imageContainer);
+
                             } else {
                                 const input = document.createElement('input');
                                 input.type = 'text';
@@ -309,8 +358,29 @@
                 container.appendChild(table);
             }
 
+            function handleImageUpload(event, groupName, productName, rowName) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const imageData = e.target.result;
+                    // Update the data structure
+                    currentTask.processes[groupName].products[productName][rowName].image = imageData;
+                    // Re-render the table to show the thumbnail
+                    renderProcessTable(currentTask.processes);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function showFullImage(imageData) {
+                fullImageView.src = imageData;
+                imageViewerModal.style.display = 'flex';
+            }
+
             function closeModal() { modal.style.display = 'none'; currentTask = null; }
             function closeNewTaskModal() { newTaskModal.style.display = 'none'; }
+            function closeImageViewer() { imageViewerModal.style.display = 'none'; }
 
             function saveChanges() {
                 if (!currentTask) return;
@@ -329,6 +399,16 @@
                 
                 const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
                 if(taskIndex > -1){
+                    // Keep the image data from the currentTask object
+                    Object.keys(processesToSave).forEach(group => {
+                        Object.keys(processesToSave[group].products).forEach(product => {
+                            Object.keys(processesToSave[group].products[product]).forEach(row => {
+                                if(currentTask.processes[group].products[product][row].image) {
+                                    processesToSave[group].products[product][row].image = currentTask.processes[group].products[product][row].image;
+                                }
+                            });
+                        });
+                    });
                     tasks[taskIndex].processes = processesToSave;
                 }
                 
@@ -397,6 +477,7 @@
                 });
                 closeNewTaskModalBtn.addEventListener('click', closeNewTaskModal);
                 saveNewTaskBtn.addEventListener('click', saveNewTask);
+                closeImageViewerBtn.addEventListener('click', closeImageViewer);
             }
             
             startApp();
