@@ -117,16 +117,16 @@
         import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase 설정 ---
-        // 이 변수들은 외부 환경(Canvas)에서 주입됩니다.
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // --- Firebase 인스턴스 ---
         let db, auth;
+        let isOnlineMode = false;
 
         document.addEventListener("DOMContentLoaded", function() {
             let currentYear, currentMonth;
-            let tasks = []; // 로컬 데이터 캐시
+            let tasks = []; // 로컬/온라인 데이터 캐시
             let currentTask = null; // 현재 수정 중인 작업
             let unsubscribe = null; // Firestore 리스너 해제 함수
 
@@ -146,7 +146,6 @@
             const statusIndicator = document.getElementById('status-indicator');
             const statusText = document.getElementById('status-text');
 
-            // 공정 데이터 정의
             const productNames = ["상판/견시창", "전수", "구성품", "각도판"];
             const processDefinitions = {
                 "포승(부광)": { rows: { "상태": { "이동대기": false, "이동중": false, "이동완료": false }, "이동일자": "" }, notes: "" },
@@ -155,7 +154,6 @@
                 "현곡(인현)_출하": { rows: { "상태": { "상차대기": false, "상차중": false, "상차완료": false, "랩핑완료": false, "출하장 이동": false } }, notes: "" }
             };
 
-            // --- 커스텀 모달 함수 ---
             const customModal = document.getElementById('custom-modal');
             const customModalMessage = document.getElementById('custom-modal-message');
             const customModalConfirmBtn = document.getElementById('custom-modal-confirm');
@@ -193,7 +191,24 @@
                 });
             }
             
-            // --- Firestore 데이터 동기화 ---
+            // --- 데이터 저장/로드 ---
+            function saveTasks() {
+                if (isOnlineMode) {
+                    updateTasksInFirestore(tasks);
+                } else {
+                    saveTasksToLocalStorage();
+                }
+            }
+
+            function saveTasksToLocalStorage() {
+                localStorage.setItem('processCalendarTasks', JSON.stringify(tasks));
+            }
+
+            function loadTasksFromLocalStorage() {
+                const savedTasks = localStorage.getItem('processCalendarTasks');
+                tasks = savedTasks ? JSON.parse(savedTasks) : [];
+            }
+
             async function updateTasksInFirestore(updatedTasks) {
                 if (!db) return;
                 const docRef = doc(db, `artifacts/${appId}/public/data/process-calendar`, "tasks");
@@ -209,25 +224,17 @@
             }
 
             function listenToTasks() {
-                if (unsubscribe) unsubscribe(); // 기존 리스너 해제
-
+                if (unsubscribe) unsubscribe(); 
                 const docRef = doc(db, `artifacts/${appId}/public/data/process-calendar`, "tasks");
                 unsubscribe = onSnapshot(docRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-                        tasks = data.tasks || [];
-                    } else {
-                        // 문서가 없으면 초기화
-                        tasks = [];
-                        updateTasksInFirestore([]);
-                    }
+                    tasks = snapshot.exists() ? snapshot.data().tasks || [] : [];
                     renderCalendar(currentYear, currentMonth);
-                    statusIndicator.classList.remove('bg-yellow-400', 'bg-red-500');
+                    statusIndicator.classList.remove('bg-yellow-400', 'bg-red-500', 'bg-gray-400');
                     statusIndicator.classList.add('bg-green-500');
                     statusText.textContent = '실시간 동기화 중';
                 }, (error) => {
                     console.error("Firestore 구독 오류:", error);
-                    statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500');
+                    statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500', 'bg-gray-400');
                     statusIndicator.classList.add('bg-red-500');
                     statusText.textContent = '연결 오류';
                 });
@@ -286,13 +293,11 @@
             function openModal(taskId) {
                 currentTask = tasks.find(t => t.id === taskId);
                 if (!currentTask) return;
-                
                 document.getElementById('modal-date').textContent = currentTask.date;
                 document.getElementById('modal-line').textContent = currentTask.line;
                 document.getElementById('modal-unit').textContent = currentTask.unit;
                 document.getElementById('modal-structure').textContent = currentTask.structure;
                 document.getElementById('modal-notes').textContent = currentTask.notes;
-                
                 renderProcessTable(currentTask.processes);
                 modal.style.display = 'flex';
             }
@@ -378,9 +383,8 @@
             function closeModal() { modal.style.display = 'none'; currentTask = null; }
             function closeNewTaskModal() { newTaskModal.style.display = 'none'; }
 
-            async function saveChanges() {
+            function saveChanges() {
                 if (!currentTask) return;
-                
                 const processesToSave = JSON.parse(JSON.stringify(currentTask.processes));
                 const inputs = modal.querySelectorAll('input[type="checkbox"], input[type="text"][data-row], textarea[data-row]');
                 inputs.forEach(input => {
@@ -392,54 +396,48 @@
                         else { processesToSave[group].products[product][row] = input.value; }
                     }
                 });
-                
                 const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
                 if(taskIndex > -1){
-                    const updatedTasks = [...tasks];
-                    updatedTasks[taskIndex].processes = processesToSave;
-                    await updateTasksInFirestore(updatedTasks);
+                    tasks[taskIndex].processes = processesToSave;
+                    saveTasks();
                 }
-                
                 showCustomAlert('변경사항이 저장되었습니다.');
                 closeModal();
+                renderCalendar(currentYear, currentMonth);
             }
             
-            async function saveNewTask() {
+            function saveNewTask() {
                 const date = document.getElementById('new-task-date').value;
                 const line = document.getElementById('new-task-line').value.trim();
                 const unit = document.getElementById('new-task-unit').value.trim();
                 const structure = document.getElementById('new-task-structure').value.trim();
                 const notes = document.getElementById('new-task-notes').value.trim();
-
                 if (!date || !line || !unit) {
                     showCustomAlert('반입일자, 반입라인, 반입호기는 필수 항목입니다.');
                     return;
                 }
-                
                 const taskId = `${date}-${line}-${unit.replace(/ /g, '_')}`;
                 if (tasks.some(t => t.id === taskId)) {
                     showCustomAlert('이미 동일한 ID의 작업이 존재합니다.');
                     return;
                 }
-
                 const newTask = {
                     id: taskId, date, line, unit, structure, notes,
                     processes: generateProcessData()
                 };
-
-                const updatedTasks = [...tasks, newTask];
-                await updateTasksInFirestore(updatedTasks);
-                
+                tasks.push(newTask);
+                saveTasks();
+                renderCalendar(currentYear, currentMonth);
                 closeNewTaskModal();
             }
 
             async function deleteTask() {
                 if (!currentTask) return;
-
                 const confirmed = await showCustomConfirm(`'${currentTask.line} / ${currentTask.unit}' 작업을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`);
                 if (confirmed) {
-                    const updatedTasks = tasks.filter(t => t.id !== currentTask.id);
-                    await updateTasksInFirestore(updatedTasks);
+                    tasks = tasks.filter(t => t.id !== currentTask.id);
+                    saveTasks();
+                    renderCalendar(currentYear, currentMonth);
                     closeModal();
                 }
             }
@@ -448,15 +446,12 @@
                 const today = new Date();
                 currentYear = today.getFullYear();
                 currentMonth = today.getMonth();
-                
                 renderCalendar(currentYear, currentMonth);
-
                 prevMonthBtn.addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(currentYear, currentMonth); });
                 nextMonthBtn.addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(currentYear, currentMonth); });
                 closeModalBtn.addEventListener('click', closeModal);
                 saveChangesBtn.addEventListener('click', saveChanges);
                 deleteTaskBtn.addEventListener('click', deleteTask);
-                
                 addNewTaskBtn.addEventListener('click', () => {
                     newTaskModal.style.display = 'flex';
                     document.getElementById('new-task-date').valueAsDate = new Date();
@@ -465,42 +460,24 @@
                 saveNewTaskBtn.addEventListener('click', saveNewTask);
             }
             
-            // --- 앱 초기화 ---
-            async function initialize() {
-                // Firebase 설정 유효성 검사
-                if (!firebaseConfig || !firebaseConfig.projectId || !firebaseConfig.apiKey) {
-                    console.error("Firebase 설정이 올바르지 않습니다. 'projectId'와 'apiKey'가 필요합니다.");
-                    statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500');
-                    statusIndicator.classList.add('bg-red-500');
-                    statusText.textContent = 'Firebase 설정 오류';
-                    
-                    // UI 비활성화 및 메시지 표시
-                    document.getElementById('add-new-task-btn').disabled = true;
-                    document.getElementById('prev-month').disabled = true;
-                    document.getElementById('next-month').disabled = true;
-                    document.getElementById('calendar-container').style.display = 'none';
+            function initializeOfflineMode() {
+                isOnlineMode = false;
+                statusIndicator.classList.remove('bg-yellow-400');
+                statusIndicator.classList.add('bg-gray-400');
+                statusText.textContent = '오프라인 모드';
+                loadTasksFromLocalStorage();
+                startApp();
+            }
 
-                    const errorContainer = document.getElementById('error-container');
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'text-center p-8 bg-red-100 text-red-700 rounded-lg shadow-md mt-4';
-                    errorDiv.innerHTML = `
-                        <h3 class="font-bold text-xl mb-2">연결 오류</h3>
-                        <p>Firebase 데이터베이스에 연결할 수 없습니다.</p>
-                        <p class="text-sm mt-2">이 앱은 데이터베이스 연결 정보가 제공되는 환경에서만 정상적으로 작동합니다.</p>
-                    `;
-                    errorContainer.appendChild(errorDiv);
-                    
-                    return; // 여기서 함수 실행 중단
-                }
-
+            async function initializeOnlineMode() {
+                isOnlineMode = true;
                 try {
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
-
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
-                            listenToTasks(); // 데이터 리스너 시작
+                            listenToTasks();
                         } else {
                             try {
                                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -517,9 +494,7 @@
                             }
                         }
                     });
-
                     startApp();
-
                 } catch (error) {
                     console.error("Firebase 초기화 오류:", error);
                     statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500');
@@ -528,7 +503,12 @@
                 }
             }
 
-            initialize();
+            // --- 앱 초기화 ---
+            if (firebaseConfig && firebaseConfig.projectId) {
+                initializeOnlineMode();
+            } else {
+                initializeOfflineMode();
+            }
         });
     </script>
 </body>
