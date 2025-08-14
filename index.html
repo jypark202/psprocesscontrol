@@ -157,12 +157,38 @@
             const statusText = document.getElementById('status-text');
 
             const productNames = ["상판/견시창", "전수", "구성품", "각도판"];
-            const processDefinitions = {
-                "포승(부광)": { rows: { "상태": { "이동대기": false, "이동중": false, "이동완료": false }, "이동일자": "" }, notes: "" },
-                "현곡(인현)": { rows: { "상태": { "입고완료": false, "검사대기": false, "검사완료": false } }, notes: "" },
-                "현곡(TKG)": { rows: { "상태": { "CR입고": false, "장입대기": false, "오븐가동중": false, "장출대기": false, "장출완료": false, "포장완료": false, "외부이동": false } }, notes: "" },
-                "현곡(인현)_출하": { rows: { "상태": { "상차대기": false, "상차중": false, "상차완료": false, "랩핑완료": false, "출하장 이동": false } }, notes: "" }
-            };
+            // --- ✨ 순서 보장을 위해 배열 구조로 변경 ---
+            const processDefinitions = [
+                {
+                    groupName: "포승(부광)",
+                    rows: [
+                        { name: "상태", type: "checkbox", items: ["이동대기", "이동중", "이동완료"] },
+                        { name: "이동일자", type: "text" },
+                        { name: "특이사항", type: "textarea" }
+                    ]
+                },
+                {
+                    groupName: "현곡(인현)",
+                    rows: [
+                        { name: "상태", type: "checkbox", items: ["입고완료", "검사대기", "검사완료"] },
+                        { name: "특이사항", type: "textarea" }
+                    ]
+                },
+                {
+                    groupName: "현곡(TKG)",
+                    rows: [
+                        { name: "상태", type: "checkbox", items: ["CR입고", "장입대기", "오븐가동중", "장출대기", "장출완료", "포장완료", "외부이동"] },
+                        { name: "특이사항", type: "textarea" }
+                    ]
+                },
+                {
+                    groupName: "현곡(인현)_출하",
+                    rows: [
+                        { name: "상태", type: "checkbox", items: ["상차대기", "상차중", "상차완료", "랩핑완료", "출하장 이동"] },
+                        { name: "특이사항", type: "textarea" }
+                    ]
+                }
+            ];
 
             const customModal = document.getElementById('custom-modal');
             const customModalMessage = document.getElementById('custom-modal-message');
@@ -234,16 +260,24 @@
 
             function generateProcessData() {
                 const processes = {};
-                for (const groupName in processDefinitions) {
-                    processes[groupName] = { products: {}, notes: "" };
-                    for (const productName of productNames) {
+                processDefinitions.forEach(groupDef => {
+                    const groupName = groupDef.groupName;
+                    processes[groupName] = { products: {} };
+                    productNames.forEach(productName => {
                         processes[groupName].products[productName] = {};
-                        for (const rowName in processDefinitions[groupName].rows) {
-                            const rowValue = processDefinitions[groupName].rows[rowName];
-                            processes[groupName].products[productName][rowName] = (typeof rowValue === 'object') ? { ...rowValue } : rowValue;
-                        }
-                    }
-                }
+                        groupDef.rows.forEach(rowDef => {
+                            const rowName = rowDef.name;
+                            if (rowDef.type === 'checkbox') {
+                                processes[groupName].products[productName][rowName] = {};
+                                rowDef.items.forEach(item => {
+                                    processes[groupName].products[productName][rowName][item] = false;
+                                });
+                            } else {
+                                processes[groupName].products[productName][rowName] = "";
+                            }
+                        });
+                    });
+                });
                 return processes;
             }
 
@@ -305,12 +339,15 @@
                 thead.innerHTML = `<tr><th style="width: 10%;">공정</th><th style="width: 10%;"></th>${productNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
                 table.appendChild(thead);
                 const tbody = document.createElement('tbody');
-                Object.entries(processDefinitions).forEach(([groupName, def]) => {
-                    const rowKeys = Object.keys(def.rows);
-                    const notesRowNeeded = 'notes' in def;
-                    const rowSpan = rowKeys.length + (notesRowNeeded ? 1 : 0);
-                    rowKeys.forEach((rowName, index) => {
+
+                processDefinitions.forEach(groupDef => {
+                    const groupName = groupDef.groupName;
+                    const rowSpan = groupDef.rows.length;
+
+                    groupDef.rows.forEach((rowDef, index) => {
+                        const rowName = rowDef.name;
                         const tr = document.createElement('tr');
+
                         if (index === 0) {
                             const tdGroup = document.createElement('td');
                             tdGroup.rowSpan = rowSpan;
@@ -318,55 +355,54 @@
                             tdGroup.textContent = groupName.replace('_출하', '(인현)');
                             tr.appendChild(tdGroup);
                         }
+
                         const tdRowHeader = document.createElement('td');
                         tdRowHeader.className = "font-semibold bg-gray-50";
                         tdRowHeader.textContent = rowName;
                         tr.appendChild(tdRowHeader);
+                        
                         productNames.forEach(productName => {
                             const td = document.createElement('td');
                             const productData = processes[groupName]?.products?.[productName]?.[rowName];
-                            if (typeof productData === 'object') {
+                            
+                            if (rowDef.type === 'checkbox') {
                                 td.className = 'text-left align-top pt-3';
-                                Object.entries(productData).forEach(([detailName, isChecked]) => {
+                                rowDef.items.forEach(itemName => {
+                                    const isChecked = productData ? productData[itemName] : false;
                                     const label = document.createElement('label');
                                     label.className = 'checkbox-label';
                                     const checkbox = document.createElement('input');
                                     checkbox.type = 'checkbox';
                                     checkbox.className = 'form-checkbox h-4 w-4 text-blue-600 rounded';
-                                    checkbox.checked = isChecked;
-                                    checkbox.dataset.group = groupName; checkbox.dataset.product = productName; checkbox.dataset.row = rowName; checkbox.dataset.detail = detailName;
+                                    checkbox.checked = !!isChecked;
+                                    checkbox.dataset.group = groupName;
+                                    checkbox.dataset.product = productName;
+                                    checkbox.dataset.row = rowName;
+                                    checkbox.dataset.detail = itemName;
                                     label.appendChild(checkbox);
-                                    label.appendChild(document.createTextNode(` ${detailName}`));
+                                    label.appendChild(document.createTextNode(` ${itemName}`));
                                     td.appendChild(label);
                                 });
                             } else {
-                                const input = document.createElement('input');
-                                input.type = 'text';
-                                input.className = 'w-full border rounded p-1';
-                                input.value = productData || '';
-                                input.dataset.group = groupName; input.dataset.product = productName; input.dataset.row = rowName;
-                                td.appendChild(input);
+                                let inputElement;
+                                if (rowDef.type === 'textarea') {
+                                    inputElement = document.createElement('textarea');
+                                    inputElement.className = 'w-full border rounded p-1 h-20 resize-none text-xs';
+                                } else {
+                                    inputElement = document.createElement('input');
+                                    inputElement.type = 'text';
+                                    inputElement.className = 'w-full border rounded p-1';
+                                }
+                                inputElement.value = productData || '';
+                                inputElement.dataset.group = groupName;
+                                inputElement.dataset.product = productName;
+                                inputElement.dataset.row = rowName;
+                                td.appendChild(inputElement);
                             }
                             tr.appendChild(td);
                         });
                         tbody.appendChild(tr);
                     });
-                    if (notesRowNeeded) {
-                        const trNotes = document.createElement('tr');
-                        const tdNotesHeader = document.createElement('td');
-                        tdNotesHeader.className = "font-semibold bg-gray-50";
-                        tdNotesHeader.textContent = '특이사항';
-                        trNotes.appendChild(tdNotesHeader);
-                        const tdNotesText = document.createElement('td');
-                        tdNotesText.colSpan = productNames.length;
-                        const textarea = document.createElement('textarea');
-                        textarea.className = 'w-full border rounded p-2 h-20 resize-none';
-                        textarea.value = processes[groupName]?.notes || '';
-                        textarea.dataset.group = groupName; textarea.dataset.row = 'notes';
-                        tdNotesText.appendChild(textarea);
-                        trNotes.appendChild(tdNotesText);
-                        tbody.appendChild(trNotes);
-                    }
                 });
                 table.appendChild(tbody);
                 container.appendChild(table);
@@ -378,14 +414,19 @@
             function saveChanges() {
                 if (!currentTask) return;
                 const processesToSave = JSON.parse(JSON.stringify(currentTask.processes));
-                const inputs = modal.querySelectorAll('input[type="checkbox"], input[type="text"][data-row], textarea[data-row]');
+                const inputs = modal.querySelectorAll('input[type="checkbox"], input[type="text"], textarea');
                 inputs.forEach(input => {
                     const { group, product, row, detail } = input.dataset;
-                    if (!group || !row) return;
-                    if (row === 'notes') { processesToSave[group].notes = input.value; } 
-                    else if (product) {
-                        if (detail) { processesToSave[group].products[product][row][detail] = input.checked; } 
-                        else { processesToSave[group].products[product][row] = input.value; }
+                    if (!group || !product || !row) return;
+                    
+                    if (processesToSave[group]?.products?.[product]) {
+                        if (detail) { 
+                            if(processesToSave[group].products[product][row]){
+                               processesToSave[group].products[product][row][detail] = input.checked;
+                            }
+                        } else { 
+                            processesToSave[group].products[product][row] = input.value;
+                        }
                     }
                 });
                 const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
