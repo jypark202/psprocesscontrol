@@ -48,8 +48,8 @@
             <div id="calendar-grid" class="grid calendar-grid"></div>
         </div>
         
-        <!-- 에러 메시지 표시 영역 -->
-        <div id="error-container"></div>
+        <!-- 설정 안내 메시지 표시 영역 -->
+        <div id="config-guide-container" class="hidden"></div>
     </div>
 
     <!-- 새 작업 추가 모달 -->
@@ -116,17 +116,27 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase 설정 ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- ⚙️ Firebase 설정 (완료!) ---
+        const userFirebaseConfig = {
+            apiKey: "AIzaSyAcIM8AtD9pwtJHH9mqX3q1iDUIGOOUqZ4",
+            authDomain: "psprocesscontrol.firebaseapp.com",
+            projectId: "psprocesscontrol",
+            storageBucket: "psprocesscontrol.appspot.com",
+            messagingSenderId: "150463270722",
+            appId: "1:150463270722:web:9d5ad3cff85edbab6cc2db",
+            measurementId: "G-DQ0RGJRE8C"
+        };
+
+        const envFirebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = envFirebaseConfig.projectId ? envFirebaseConfig : userFirebaseConfig;
+        const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'default-app-id';
 
         // --- Firebase 인스턴스 ---
         let db, auth;
-        let isOnlineMode = false;
 
         document.addEventListener("DOMContentLoaded", function() {
             let currentYear, currentMonth;
-            let tasks = []; // 로컬/온라인 데이터 캐시
+            let tasks = []; // 데이터 캐시
             let currentTask = null; // 현재 수정 중인 작업
             let unsubscribe = null; // Firestore 리스너 해제 함수
 
@@ -191,30 +201,12 @@
                 });
             }
             
-            // --- 데이터 저장/로드 ---
-            function saveTasks() {
-                if (isOnlineMode) {
-                    updateTasksInFirestore(tasks);
-                } else {
-                    saveTasksToLocalStorage();
-                }
-            }
-
-            function saveTasksToLocalStorage() {
-                localStorage.setItem('processCalendarTasks', JSON.stringify(tasks));
-            }
-
-            function loadTasksFromLocalStorage() {
-                const savedTasks = localStorage.getItem('processCalendarTasks');
-                tasks = savedTasks ? JSON.parse(savedTasks) : [];
-            }
-
-            async function updateTasksInFirestore(updatedTasks) {
+            async function saveTasks() {
                 if (!db) return;
                 const docRef = doc(db, `artifacts/${appId}/public/data/process-calendar`, "tasks");
                 try {
                     await setDoc(docRef, { 
-                        tasks: updatedTasks,
+                        tasks: tasks,
                         updatedAt: serverTimestamp()
                     });
                 } catch (error) {
@@ -229,12 +221,12 @@
                 unsubscribe = onSnapshot(docRef, (snapshot) => {
                     tasks = snapshot.exists() ? snapshot.data().tasks || [] : [];
                     renderCalendar(currentYear, currentMonth);
-                    statusIndicator.classList.remove('bg-yellow-400', 'bg-red-500', 'bg-gray-400');
+                    statusIndicator.classList.remove('bg-yellow-400', 'bg-red-500');
                     statusIndicator.classList.add('bg-green-500');
                     statusText.textContent = '실시간 동기화 중';
                 }, (error) => {
                     console.error("Firestore 구독 오류:", error);
-                    statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500', 'bg-gray-400');
+                    statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500');
                     statusIndicator.classList.add('bg-red-500');
                     statusText.textContent = '연결 오류';
                 });
@@ -403,7 +395,7 @@
                 }
                 showCustomAlert('변경사항이 저장되었습니다.');
                 closeModal();
-                renderCalendar(currentYear, currentMonth);
+                if (!unsubscribe) renderCalendar(currentYear, currentMonth);
             }
             
             function saveNewTask() {
@@ -427,7 +419,7 @@
                 };
                 tasks.push(newTask);
                 saveTasks();
-                renderCalendar(currentYear, currentMonth);
+                if (!unsubscribe) renderCalendar(currentYear, currentMonth);
                 closeNewTaskModal();
             }
 
@@ -437,7 +429,7 @@
                 if (confirmed) {
                     tasks = tasks.filter(t => t.id !== currentTask.id);
                     saveTasks();
-                    renderCalendar(currentYear, currentMonth);
+                    if (!unsubscribe) renderCalendar(currentYear, currentMonth);
                     closeModal();
                 }
             }
@@ -460,17 +452,27 @@
                 saveNewTaskBtn.addEventListener('click', saveNewTask);
             }
             
-            function initializeOfflineMode() {
-                isOnlineMode = false;
-                statusIndicator.classList.remove('bg-yellow-400');
-                statusIndicator.classList.add('bg-gray-400');
-                statusText.textContent = '오프라인 모드';
-                loadTasksFromLocalStorage();
-                startApp();
-            }
+            // --- 앱 초기화 ---
+            function initialize() {
+                if (!firebaseConfig || !firebaseConfig.projectId) {
+                    console.error("Firebase 설정이 없습니다.");
+                    statusIndicator.classList.remove('bg-yellow-400');
+                    statusIndicator.classList.add('bg-red-500');
+                    statusText.textContent = '설정 필요';
+                    
+                    document.getElementById('calendar-container').style.display = 'none';
+                    const guideContainer = document.getElementById('config-guide-container');
+                    guideContainer.style.display = 'block';
+                    guideContainer.innerHTML = `
+                        <div class="text-center p-8 bg-orange-100 text-orange-800 rounded-lg shadow-md mt-4">
+                            <h3 class="font-bold text-xl mb-2">⚠️ Firebase 설정 오류</h3>
+                            <p>실시간 동기화에 필요한 Firebase 구성 정보가 올바르지 않습니다.</p>
+                            <p class="text-sm mt-2">코드의 'userFirebaseConfig' 부분을 다시 확인해주세요.</p>
+                        </div>
+                    `;
+                    return;
+                }
 
-            async function initializeOnlineMode() {
-                isOnlineMode = true;
                 try {
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
@@ -480,14 +482,15 @@
                             listenToTasks();
                         } else {
                             try {
-                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                    await signInWithCustomToken(auth, __initial_auth_token);
+                                const token = (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) ? __initial_auth_token : null;
+                                if (token) {
+                                    await signInWithCustomToken(auth, token);
                                 } else {
                                     await signInAnonymously(auth);
                                 }
                                 listenToTasks();
                             } catch (error) {
-                                console.error("익명 로그인 실패:", error);
+                                console.error("인증 실패:", error);
                                 statusIndicator.classList.remove('bg-yellow-400', 'bg-green-500');
                                 statusIndicator.classList.add('bg-red-500');
                                 statusText.textContent = '인증 오류';
@@ -503,12 +506,7 @@
                 }
             }
 
-            // --- 앱 초기화 ---
-            if (firebaseConfig && firebaseConfig.projectId) {
-                initializeOnlineMode();
-            } else {
-                initializeOfflineMode();
-            }
+            initialize();
         });
     </script>
 </body>
