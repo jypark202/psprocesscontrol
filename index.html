@@ -9,34 +9,32 @@
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
         .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-        /* --- 🎨 디자인 수정: 캘린더 높이 최소화 --- */
         .calendar-day { min-height: 100px; }
         .event-item { font-size: 0.8rem; padding: 2px 4px; margin-bottom: 2px; border-radius: 4px; cursor: pointer; }
         #modal-content::-webkit-scrollbar { width: 8px; }
         #modal-content::-webkit-scrollbar-track { background: #f1f1f1; }
         #modal-content::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
         #modal-content::-webkit-scrollbar-thumb:hover { background: #555; }
-        /* --- 🎨 디자인 수정: 표 스타일 개선 --- */
-        .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; vertical-align: middle; }
-        .process-table thead th { background-color: #f9fafb; font-weight: 600; }
-        .process-table tbody tr:hover { background-color: #f9fafb; }
-        .process-table .checkbox-label { display: flex; align-items: center; margin-bottom: 0.5rem; white-space: nowrap; }
-        .process-table .checkbox-label:last-child { margin-bottom: 0; }
+        
+        .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: center; vertical-align: middle; }
+        .process-table thead th { background-color: #f8fafc; font-weight: 600; color: #334155; }
+        .process-table tbody tr:hover { background-color: #f8fafc; }
+        .process-table .checkbox-label { display: flex; align-items: center; white-space: nowrap; }
         .sticky-header { position: sticky; top: -1px; z-index: 10; }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-100">
 
-    <div id="app" class="container mx-auto p-4 max-w-7xl">
+    <div id="app" class="container mx-auto p-4 max-w-screen-2xl">
         <!-- 헤더 -->
-        <div class="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow">
+        <div class="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
             <div>
-                <button id="prev-month" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">&lt; 이전</button>
-                <button id="next-month" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 ml-2">다음 &gt;</button>
+                <button id="prev-month" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">&lt; 이전</button>
+                <button id="next-month" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 ml-2">다음 &gt;</button>
             </div>
-            <h2 id="current-month-year" class="text-2xl font-bold text-gray-800"></h2>
+            <h2 id="current-month-year" class="text-2xl font-bold text-slate-800"></h2>
             <div class="flex items-center gap-4">
-                 <div id="sync-status" class="text-sm text-gray-500 flex items-center gap-2">
+                 <div id="sync-status" class="text-sm text-slate-500 flex items-center gap-2">
                     <div id="status-indicator" class="w-3 h-3 rounded-full bg-yellow-400"></div>
                     <span id="status-text">연결 중...</span>
                 </div>
@@ -48,7 +46,7 @@
         </div>
 
         <!-- 캘린더 -->
-        <div id="calendar-container" class="bg-white rounded-lg shadow overflow-hidden">
+        <div id="calendar-container" class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="grid grid-cols-7 text-center font-semibold border-b">
                 <div class="py-2 text-red-500">일</div><div class="py-2">월</div><div class="py-2">화</div><div class="py-2">수</div><div class="py-2">목</div><div class="py-2">금</div><div class="py-2 text-blue-500">토</div>
             </div>
@@ -63,40 +61,40 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col">
             <div class="flex justify-between items-center p-4 border-b">
                 <h3 id="new-task-modal-title" class="text-xl font-bold">새 작업 추가</h3>
-                <button id="close-new-task-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+                <button id="close-new-task-modal" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label for="new-task-date" class="block text-sm font-medium text-gray-700">반입일자</label><input type="date" id="new-task-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="new-task-line" class="block text-sm font-medium text-gray-700">반입라인</label><input type="text" id="new-task-line" placeholder="예: A2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div id="new-task-unit-wrapper"><label for="new-task-unit" class="block text-sm font-medium text-gray-700">반입호기</label><input type="text" id="new-task-unit" placeholder="예: 53호기" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div id="new-task-structure-wrapper"><label for="new-task-structure" class="block text-sm font-medium text-gray-700">반입구조</label><input type="text" id="new-task-structure" placeholder="예: DM0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="new-task-notes" class="block text-sm font-medium text-gray-700">특이사항</label><input type="text" id="new-task-notes" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
+                <div><label for="new-task-date" class="block text-sm font-medium text-slate-700">반입일자</label><input type="date" id="new-task-date" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm"></div>
+                <div><label for="new-task-line" class="block text-sm font-medium text-slate-700">반입라인</label><input type="text" id="new-task-line" placeholder="예: A2" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm"></div>
+                <div id="new-task-unit-wrapper"><label for="new-task-unit" class="block text-sm font-medium text-slate-700">반입호기</label><input type="text" id="new-task-unit" placeholder="예: 53호기" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm"></div>
+                <div id="new-task-structure-wrapper"><label for="new-task-structure" class="block text-sm font-medium text-slate-700">반입구조</label><input type="text" id="new-task-structure" placeholder="예: DM0" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm"></div>
+                <div><label for="new-task-notes" class="block text-sm font-medium text-slate-700">특이사항</label><input type="text" id="new-task-notes" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm"></div>
             </div>
             <div class="p-4 border-t flex justify-end"><button id="save-new-task-btn" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">저장</button></div>
         </div>
     </div>
 
     <!-- 상세 정보 모달 -->
-    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-screen-2xl max-h-[95vh] flex flex-col">
             <div class="flex justify-between items-center p-4 border-b">
-                <h3 class="text-xl font-bold">상세 정보 및 공정 현황</h3>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+                <h3 class="text-xl font-bold text-slate-800">상세 정보 및 공정 현황</h3>
+                <button id="close-modal" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
             </div>
-            <div id="modal-content" class="p-4 overflow-y-auto">
-                <div class="mb-6">
-                    <h4 class="font-bold text-lg mb-2 text-blue-600">기본 정보</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm border p-4 rounded-md bg-gray-50">
+            <div id="modal-content" class="p-6 overflow-y-auto bg-slate-50/50">
+                <div class="mb-4">
+                    <h4 class="font-bold text-md mb-2 text-blue-600">기본 정보</h4>
+                    <div class="grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
                         <div><strong>반입일자:</strong> <span id="modal-date"></span></div>
                         <div><strong>반입라인:</strong> <span id="modal-line"></span></div>
                         <div id="modal-unit-wrapper"><strong>반입호기:</strong> <span id="modal-unit"></span></div>
-                        <div id="modal-structure-wrapper" class="col-span-1"><strong>반입구조:</strong> <span id="modal-structure"></span></div>
-                        <div class="col-span-2 md:col-span-2"><strong>특이사항:</strong> <span id="modal-notes"></span></div>
+                        <div id="modal-structure-wrapper"><strong>반입구조:</strong> <span id="modal-structure"></span></div>
+                        <div class="col-span-full"><strong>특이사항:</strong> <span id="modal-notes"></span></div>
                     </div>
                 </div>
                 <div id="process-table-container"></div>
             </div>
-            <div class="p-4 border-t flex justify-between items-center">
+            <div class="p-4 border-t flex justify-between items-center bg-slate-50">
                 <button id="delete-task-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">작업 삭제</button>
                 <button id="save-changes" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">공정 현황 저장</button>
             </div>
@@ -105,10 +103,10 @@
 
     <div id="custom-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-[100]">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
-            <div class="p-6"><p id="custom-modal-message" class="text-gray-700"></p></div>
+            <div class="p-6"><p id="custom-modal-message" class="text-slate-700"></p></div>
             <div id="custom-modal-buttons" class="p-4 border-t flex justify-end gap-2">
                 <button id="custom-modal-confirm" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">확인</button>
-                <button id="custom-modal-cancel" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">취소</button>
+                <button id="custom-modal-cancel" class="bg-slate-300 text-slate-800 px-4 py-2 rounded-lg hover:bg-slate-400">취소</button>
             </div>
         </div>
     </div>
@@ -313,7 +311,7 @@
                 const table = document.createElement('table');
                 table.className = 'w-full text-sm border-collapse process-table';
                 const thead = document.createElement('thead');
-                thead.className = 'bg-gray-100 font-semibold sticky-header';
+                thead.className = 'bg-slate-100 font-semibold sticky-header';
                 thead.innerHTML = `<tr><th style="width: 10%;">공정</th><th style="width: 10%;"></th>${productNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
                 table.appendChild(thead);
                 const tbody = document.createElement('tbody');
@@ -326,19 +324,23 @@
                         if (index === 0) {
                             const tdGroup = document.createElement('td');
                             tdGroup.rowSpan = rowSpan;
-                            tdGroup.className = "font-semibold";
+                            tdGroup.className = "font-semibold bg-slate-50";
                             tdGroup.textContent = groupName.replace('_출하', '_출하 ');
                             tr.appendChild(tdGroup);
                         }
                         const tdRowHeader = document.createElement('td');
-                        tdRowHeader.className = "font-semibold bg-gray-50";
+                        tdRowHeader.className = "font-semibold bg-slate-50";
                         tdRowHeader.textContent = rowName;
                         tr.appendChild(tdRowHeader);
                         productNames.forEach(productName => {
                             const td = document.createElement('td');
                             const productData = processes[groupName]?.products?.[productName]?.[rowName];
                             if (rowDef.type === 'checkbox') {
-                                td.className = 'text-left align-top pt-3';
+                                td.className = 'align-top p-2';
+                                // --- 🎨 디자인 개선: 세로 정렬 ---
+                                const checkboxContainer = document.createElement('div');
+                                checkboxContainer.className = 'flex flex-col gap-y-2';
+
                                 rowDef.items.forEach(item => {
                                     const itemName = item.label;
                                     const itemData = productData ? productData[itemName] : { checked: false, date: "" };
@@ -346,14 +348,14 @@
                                     const dateValue = itemData?.date || "";
 
                                     const wrapper = document.createElement('div');
-                                    wrapper.className = 'flex items-center gap-2 justify-between mb-2';
+                                    wrapper.className = 'flex items-center gap-2 justify-between';
 
                                     const label = document.createElement('label');
                                     label.className = 'checkbox-label';
                                     
                                     const checkbox = document.createElement('input');
                                     checkbox.type = 'checkbox';
-                                    checkbox.className = 'form-checkbox h-4 w-4 text-blue-600 rounded';
+                                    checkbox.className = 'form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500';
                                     checkbox.checked = isChecked;
                                     checkbox.dataset.group = groupName; checkbox.dataset.product = productName; checkbox.dataset.row = rowName; checkbox.dataset.detail = itemName;
                                     
@@ -364,22 +366,23 @@
                                     if (item.hasDate) {
                                         const dateInput = document.createElement('input');
                                         dateInput.type = 'date';
-                                        dateInput.className = 'border rounded p-1 w-28 text-xs';
+                                        dateInput.className = 'border rounded p-1 w-28 text-xs border-slate-300';
                                         dateInput.value = dateValue;
                                         dateInput.dataset.group = groupName; dateInput.dataset.product = productName; dateInput.dataset.row = rowName; dateInput.dataset.detailDate = itemName;
                                         wrapper.appendChild(dateInput);
                                     }
-                                    td.appendChild(wrapper);
+                                    checkboxContainer.appendChild(wrapper);
                                 });
+                                td.appendChild(checkboxContainer);
                             } else {
                                 let inputElement;
                                 if (rowDef.type === 'textarea') {
                                     inputElement = document.createElement('textarea');
-                                    inputElement.className = 'w-full border rounded p-1 h-20 resize-none text-xs';
+                                    inputElement.className = 'w-full border rounded p-1 h-20 resize-none text-xs border-slate-300';
                                 } else {
                                     inputElement = document.createElement('input');
                                     inputElement.type = 'text';
-                                    inputElement.className = 'w-full border rounded p-1';
+                                    inputElement.className = 'w-full border rounded p-1 border-slate-300';
                                 }
                                 inputElement.value = productData || '';
                                 inputElement.dataset.group = groupName; inputElement.dataset.product = productName; inputElement.dataset.row = rowName;
