@@ -16,11 +16,17 @@
         #modal-content::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
         #modal-content::-webkit-scrollbar-thumb:hover { background: #555; }
         
-        .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: center; vertical-align: middle; }
+        .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; vertical-align: middle; font-size: 0.8rem; }
         .process-table thead th { background-color: #f8fafc; font-weight: 600; color: #334155; }
-        .process-table tbody tr:hover { background-color: #f8fafc; }
         .process-table .checkbox-label { display: flex; align-items: center; white-space: nowrap; }
         .sticky-header { position: sticky; top: -1px; z-index: 10; }
+
+        /* --- ✨ 날짜 입력 시 시각적 피드백을 위한 스타일 --- */
+        .date-input-filled {
+            background-color: #e0f2fe; /* light-blue-100 */
+            font-weight: 600;
+            color: #0c4a6e; /* cyan-800 */
+        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -162,12 +168,11 @@
             const bafflePlateProductNames = ["상판", "견시창", "각도판", "리플렉터", "구성품", "전수", "셋업"];
             const linearProductNames = ["BODY", "NOZZLE", "I/P"];
             
-            // ✨ 이동일자 type을 'date'로 변경
             const processDefinitions = [
-                { groupName: "포승(부광)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "이동대기"}, {label: "이동중"}, {label: "이동완료"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] },
-                { groupName: "현곡(인현)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "입고완료"}, {label: "검사대기"}, {label: "검사완료"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] },
-                { groupName: "현곡(TKG)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "CR입고", hasDate: true}, {label: "오븐 시작일", hasDate: true}, {label: "오븐 완료일", hasDate: true}, {label: "포장 시작일", hasDate: true}, {label: "포장 완료일", hasDate: true}, {label: "외부 이동"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] },
-                { groupName: "현곡(인현)_출하", rows: [ { name: "상태", type: "checkbox", items: [ {label: "상차대기"}, {label: "상차중"}, {label: "상차완료"}, {label: "랩핑완료"}, {label: "출하장 이동"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] }
+                { groupName: "포승(부광)", color: "bg-blue-50", rows: [ { name: "상태", type: "checkbox", items: [ {label: "이동대기", hasDate: true}, {label: "이동중", hasDate: true}, {label: "이동완료", hasDate: true} ] }, { name: "특이사항", type: "textarea" } ] },
+                { groupName: "현곡(인현)", color: "bg-green-50", rows: [ { name: "상태", type: "checkbox", items: [ {label: "입고완료", hasDate: true}, {label: "검사대기", hasDate: true}, {label: "검사완료", hasDate: true} ] }, { name: "특이사항", type: "textarea" } ] },
+                { groupName: "현곡(TKG)", color: "bg-yellow-50", rows: [ { name: "상태", type: "checkbox", items: [ {label: "CR입고", hasDate: true}, {label: "오븐 시작일", hasDate: true}, {label: "오븐 완료일", hasDate: true}, {label: "포장 시작일", hasDate: true}, {label: "포장 완료일", hasDate: true}, {label: "외부 이동", hasDate: true} ] }, { name: "특이사항", type: "textarea" } ] },
+                { groupName: "현곡(인현)_출하", color: "bg-orange-50", rows: [ { name: "상태", type: "checkbox", items: [ {label: "상차대기", hasDate: true}, {label: "상차중", hasDate: true}, {label: "상차완료", hasDate: true}, {label: "랩핑완료", hasDate: true}, {label: "출하장 이동", hasDate: true} ] }, { name: "특이사항", type: "textarea" } ] }
             ];
 
             const customModal = document.getElementById('custom-modal');
@@ -304,6 +309,15 @@
                 modal.style.display = 'flex';
             }
             
+            // ✨ 날짜 입력 시 UI 변경을 위한 헬퍼 함수
+            function updateDateInputStyle(input) {
+                if (input.value) {
+                    input.classList.add('date-input-filled');
+                } else {
+                    input.classList.remove('date-input-filled');
+                }
+            }
+
             function renderProcessTable(processes, taskType) {
                 const productNames = taskType === 'linear' ? linearProductNames : bafflePlateProductNames;
                 const container = document.getElementById('process-table-container');
@@ -325,19 +339,20 @@
                         if (index === 0) {
                             const tdGroup = document.createElement('td');
                             tdGroup.rowSpan = rowSpan;
-                            tdGroup.className = "font-semibold bg-slate-50";
+                            tdGroup.className = `font-semibold ${groupDef.color}`;
                             tdGroup.textContent = groupName.replace('_출하', '_출하 ');
                             tr.appendChild(tdGroup);
                         }
                         const tdRowHeader = document.createElement('td');
-                        tdRowHeader.className = "font-semibold bg-slate-50";
+                        tdRowHeader.className = `font-semibold ${groupDef.color}`;
                         tdRowHeader.textContent = rowName;
                         tr.appendChild(tdRowHeader);
                         productNames.forEach(productName => {
                             const td = document.createElement('td');
+                            td.className = groupDef.color;
                             const productData = processes[groupName]?.products?.[productName]?.[rowName];
                             if (rowDef.type === 'checkbox') {
-                                td.className = 'align-top p-2';
+                                td.className += ' align-top p-2';
                                 const checkboxContainer = document.createElement('div');
                                 checkboxContainer.className = 'flex flex-col gap-y-2';
 
@@ -348,7 +363,7 @@
                                     const dateValue = itemData?.date || "";
 
                                     const wrapper = document.createElement('div');
-                                    wrapper.className = 'flex items-center gap-2 justify-between';
+                                    wrapper.className = 'flex items-center gap-1 justify-between';
 
                                     const label = document.createElement('label');
                                     label.className = 'checkbox-label';
@@ -366,9 +381,14 @@
                                     if (item.hasDate) {
                                         const dateInput = document.createElement('input');
                                         dateInput.type = 'date';
-                                        dateInput.className = 'border rounded p-1 w-28 text-xs border-slate-300';
+                                        dateInput.className = 'border rounded p-1 w-24 text-xs border-slate-300';
                                         dateInput.value = dateValue;
                                         dateInput.dataset.group = groupName; dateInput.dataset.product = productName; dateInput.dataset.row = rowName; dateInput.dataset.detailDate = itemName;
+                                        
+                                        // ✨ 이벤트 리스너 및 초기 스타일 적용
+                                        dateInput.addEventListener('input', () => updateDateInputStyle(dateInput));
+                                        updateDateInputStyle(dateInput);
+
                                         wrapper.appendChild(dateInput);
                                     }
                                     checkboxContainer.appendChild(wrapper);
@@ -381,12 +401,18 @@
                                     inputElement.className = 'w-full border rounded p-1 h-20 resize-none text-xs border-slate-300';
                                 } else {
                                     inputElement = document.createElement('input');
-                                    // ✨ type을 rowDef에서 가져오도록 수정
                                     inputElement.type = rowDef.type || 'text';
                                     inputElement.className = 'w-full border rounded p-1 border-slate-300';
                                 }
                                 inputElement.value = productData || '';
                                 inputElement.dataset.group = groupName; inputElement.dataset.product = productName; inputElement.dataset.row = rowName;
+                                
+                                // ✨ '이동일자' 같은 일반 날짜 입력 필드에도 스타일 적용
+                                if (inputElement.type === 'date') {
+                                    inputElement.addEventListener('input', () => updateDateInputStyle(inputElement));
+                                    updateDateInputStyle(inputElement);
+                                }
+
                                 td.appendChild(inputElement);
                             }
                             tr.appendChild(td);
