@@ -11,17 +11,22 @@
         .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
         .calendar-day { min-height: 100px; }
         .event-item { font-size: 0.8rem; padding: 2px 4px; margin-bottom: 2px; border-radius: 4px; cursor: pointer; }
-        #modal-content::-webkit-scrollbar { width: 8px; }
+        #modal-content::-webkit-scrollbar { width: 8px; height: 8px; }
         #modal-content::-webkit-scrollbar-track { background: #f1f1f1; }
         #modal-content::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
         #modal-content::-webkit-scrollbar-thumb:hover { background: #555; }
         
-        .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; vertical-align: middle; font-size: 0.8rem; }
+        .process-table { table-layout: fixed; }
+        .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; vertical-align: middle; font-size: 0.8rem; white-space: nowrap; }
+        .process-table .product-col { width: 180px; }
         .process-table thead th { background-color: #f8fafc; font-weight: 600; color: #334155; }
         .process-table .checkbox-label { display: flex; align-items: center; white-space: nowrap; }
-        .sticky-header { position: sticky; top: -1px; z-index: 10; }
+        
+        .sticky-header { position: sticky; top: -1px; z-index: 20; }
+        .sticky-col { position: sticky; left: 0; z-index: 10; }
+        .sticky-col-2 { position: sticky; left: 8.333333%; /* w-1/12 */ z-index: 10; }
 
-        /* --- ✨ 날짜 입력 시 시각적 피드백을 위한 스타일 --- */
+
         .date-input-filled {
             background-color: #e0f2fe; /* light-blue-100 */
             font-weight: 600;
@@ -82,12 +87,12 @@
 
     <!-- 상세 정보 모달 -->
     <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-screen-2xl max-h-[95vh] flex flex-col">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-screen-xl max-h-[95vh] flex flex-col">
             <div class="flex justify-between items-center p-4 border-b">
                 <h3 class="text-xl font-bold text-slate-800">상세 정보 및 공정 현황</h3>
                 <button id="close-modal" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
             </div>
-            <div id="modal-content" class="p-6 overflow-y-auto bg-slate-50/50">
+            <div id="modal-content" class="p-6 overflow-auto bg-slate-50/50">
                 <div class="mb-4">
                     <h4 class="font-bold text-md mb-2 text-blue-600">기본 정보</h4>
                     <div class="grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
@@ -143,6 +148,7 @@
             let currentTask = null;
             let unsubscribe = null;
             let currentTaskType = 'baffle-plate';
+            let visibleProducts = []; 
 
             const calendarGrid = document.getElementById('calendar-grid');
             const currentMonthYearEl = document.getElementById('current-month-year');
@@ -290,6 +296,9 @@
             function openModal(taskId) {
                 currentTask = tasks.find(t => t.id === taskId);
                 if (!currentTask) return;
+                
+                visibleProducts = currentTask.visibleProducts || []; 
+                
                 document.getElementById('modal-date').textContent = currentTask.date;
                 document.getElementById('modal-line').textContent = currentTask.line;
                 document.getElementById('modal-notes').textContent = currentTask.notes;
@@ -309,7 +318,6 @@
                 modal.style.display = 'flex';
             }
             
-            // ✨ 날짜 입력 시 UI 변경을 위한 헬퍼 함수
             function updateDateInputStyle(input) {
                 if (input.value) {
                     input.classList.add('date-input-filled');
@@ -319,7 +327,7 @@
             }
 
             function renderProcessTable(processes, taskType) {
-                const productNames = taskType === 'linear' ? linearProductNames : bafflePlateProductNames;
+                const allProductNames = taskType === 'linear' ? linearProductNames : bafflePlateProductNames;
                 const container = document.getElementById('process-table-container');
                 container.innerHTML = '';
                 if (!processes) return;
@@ -327,8 +335,16 @@
                 table.className = 'w-full text-sm border-collapse process-table';
                 const thead = document.createElement('thead');
                 thead.className = 'bg-slate-100 font-semibold sticky-header';
-                thead.innerHTML = `<tr><th style="width: 10%;">공정</th><th style="width: 10%;"></th>${productNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
+                
+                let headerHTML = `<tr><th class="sticky-col" style="width: 8.333333%;">공정</th><th class="sticky-col-2" style="width: 8.333333%;"></th>`;
+                visibleProducts.forEach(productName => {
+                    headerHTML += `<th class="product-col"><div class="flex items-center justify-center gap-2">${productName}<button data-remove-product="${productName}" class="text-red-500 font-bold"> &times;</button></div></th>`;
+                });
+                headerHTML += `<th><div id="add-product-container" class="relative"><button id="add-product-btn" class="bg-blue-500 text-white rounded-md px-2 py-1 text-xs">제품 추가</button></div></th>`;
+                headerHTML += `</tr>`;
+                thead.innerHTML = headerHTML;
                 table.appendChild(thead);
+
                 const tbody = document.createElement('tbody');
                 processDefinitions.forEach(groupDef => {
                     const groupName = groupDef.groupName;
@@ -339,17 +355,18 @@
                         if (index === 0) {
                             const tdGroup = document.createElement('td');
                             tdGroup.rowSpan = rowSpan;
-                            tdGroup.className = `font-semibold ${groupDef.color}`;
+                            tdGroup.className = `font-semibold sticky-col ${groupDef.color}`;
                             tdGroup.textContent = groupName.replace('_출하', '_출하 ');
                             tr.appendChild(tdGroup);
                         }
                         const tdRowHeader = document.createElement('td');
-                        tdRowHeader.className = `font-semibold ${groupDef.color}`;
+                        tdRowHeader.className = `font-semibold sticky-col-2 ${groupDef.color}`;
                         tdRowHeader.textContent = rowName;
                         tr.appendChild(tdRowHeader);
-                        productNames.forEach(productName => {
+                        
+                        visibleProducts.forEach(productName => {
                             const td = document.createElement('td');
-                            td.className = groupDef.color;
+                            td.className = `${groupDef.color} product-col`;
                             const productData = processes[groupName]?.products?.[productName]?.[rowName];
                             if (rowDef.type === 'checkbox') {
                                 td.className += ' align-top p-2';
@@ -381,11 +398,11 @@
                                     if (item.hasDate) {
                                         const dateInput = document.createElement('input');
                                         dateInput.type = 'date';
-                                        dateInput.className = 'border rounded p-1 w-24 text-xs border-slate-300';
+                                        // --- ✨ 날짜 칸 너비 최소화 ---
+                                        dateInput.className = 'border rounded p-1 w-28 text-xs border-slate-300';
                                         dateInput.value = dateValue;
                                         dateInput.dataset.group = groupName; dateInput.dataset.product = productName; dateInput.dataset.row = rowName; dateInput.dataset.detailDate = itemName;
                                         
-                                        // ✨ 이벤트 리스너 및 초기 스타일 적용
                                         dateInput.addEventListener('input', () => updateDateInputStyle(dateInput));
                                         updateDateInputStyle(dateInput);
 
@@ -407,7 +424,6 @@
                                 inputElement.value = productData || '';
                                 inputElement.dataset.group = groupName; inputElement.dataset.product = productName; inputElement.dataset.row = rowName;
                                 
-                                // ✨ '이동일자' 같은 일반 날짜 입력 필드에도 스타일 적용
                                 if (inputElement.type === 'date') {
                                     inputElement.addEventListener('input', () => updateDateInputStyle(inputElement));
                                     updateDateInputStyle(inputElement);
@@ -417,11 +433,49 @@
                             }
                             tr.appendChild(td);
                         });
+                        const emptyTd = document.createElement('td');
+                        emptyTd.className = 'bg-white';
+                        tr.appendChild(emptyTd);
                         tbody.appendChild(tr);
                     });
                 });
                 table.appendChild(tbody);
                 container.appendChild(table);
+
+                const addProductBtn = document.getElementById('add-product-btn');
+                addProductBtn.addEventListener('click', () => {
+                    const addableProducts = allProductNames.filter(p => !visibleProducts.includes(p));
+                    if (addableProducts.length === 0) {
+                        showCustomAlert("모든 제품이 추가되었습니다.");
+                        return;
+                    }
+
+                    const existingDropdown = document.getElementById('product-dropdown');
+                    if (existingDropdown) existingDropdown.remove();
+
+                    const dropdown = document.createElement('div');
+                    dropdown.id = 'product-dropdown';
+                    dropdown.className = 'absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-30 border';
+                    addableProducts.forEach(p => {
+                        const item = document.createElement('div');
+                        item.textContent = p;
+                        item.className = 'px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer';
+                        item.onclick = () => {
+                            visibleProducts.push(p);
+                            renderProcessTable(processes, taskType);
+                        };
+                        dropdown.appendChild(item);
+                    });
+                    document.getElementById('add-product-container').appendChild(dropdown);
+                });
+
+                document.querySelectorAll('[data-remove-product]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const productToRemove = e.target.dataset.removeProduct;
+                        visibleProducts = visibleProducts.filter(p => p !== productToRemove);
+                        renderProcessTable(processes, taskType);
+                    });
+                });
             }
 
             function closeModal() { modal.style.display = 'none'; currentTask = null; }
@@ -458,6 +512,7 @@
                 const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
                 if(taskIndex > -1){
                     tasks[taskIndex].processes = processesToSave;
+                    tasks[taskIndex].visibleProducts = visibleProducts;
                     saveTasks();
                 }
                 showCustomAlert('변경사항이 저장되었습니다.');
@@ -480,10 +535,10 @@
                 if (currentTaskType === 'baffle-plate') {
                     const structure = document.getElementById('new-task-structure').value.trim();
                     taskId = `${date}-${line}-${unit.replace(/ /g, '_')}`;
-                    newTask = { id: taskId, date, line, unit, structure, notes, taskType: 'baffle-plate', processes: generateProcessData('baffle-plate') };
+                    newTask = { id: taskId, date, line, unit, structure, notes, taskType: 'baffle-plate', processes: generateProcessData('baffle-plate'), visibleProducts: [] };
                 } else { // linear
                     taskId = `${date}-${line}-${unit.replace(/ /g, '_')}-linear`;
-                    newTask = { id: taskId, date, line, unit, notes, taskType: 'linear', processes: generateProcessData('linear') };
+                    newTask = { id: taskId, date, line, unit, notes, taskType: 'linear', processes: generateProcessData('linear'), visibleProducts: [] };
                 }
 
                 if (tasks.some(t => t.id === taskId)) {
