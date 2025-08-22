@@ -162,11 +162,12 @@
             const bafflePlateProductNames = ["상판", "견시창", "각도판", "리플렉터", "구성품", "전수", "셋업"];
             const linearProductNames = ["BODY", "NOZZLE", "I/P"];
             
+            // ✨ 이동일자 type을 'date'로 변경
             const processDefinitions = [
-                { groupName: "포승(부광)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "이동대기"}, {label: "이동중"}, {label: "이동완료"} ] }, { name: "이동일자", type: "text" }, { name: "특이사항", type: "textarea" } ] },
-                { groupName: "현곡(인현)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "입고완료"}, {label: "검사대기"}, {label: "검사완료"} ] }, { name: "이동일자", type: "text" }, { name: "특이사항", type: "textarea" } ] },
-                { groupName: "현곡(TKG)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "CR입고", hasDate: true}, {label: "오븐 시작일", hasDate: true}, {label: "오븐 완료일", hasDate: true}, {label: "포장 시작일", hasDate: true}, {label: "포장 완료일", hasDate: true}, {label: "외부 이동"} ] }, { name: "이동일자", type: "text" }, { name: "특이사항", type: "textarea" } ] },
-                { groupName: "현곡(인현)_출하", rows: [ { name: "상태", type: "checkbox", items: [ {label: "상차대기"}, {label: "상차중"}, {label: "상차완료"}, {label: "랩핑완료"}, {label: "출하장 이동"} ] }, { name: "이동일자", type: "text" }, { name: "특이사항", type: "textarea" } ] }
+                { groupName: "포승(부광)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "이동대기"}, {label: "이동중"}, {label: "이동완료"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] },
+                { groupName: "현곡(인현)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "입고완료"}, {label: "검사대기"}, {label: "검사완료"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] },
+                { groupName: "현곡(TKG)", rows: [ { name: "상태", type: "checkbox", items: [ {label: "CR입고", hasDate: true}, {label: "오븐 시작일", hasDate: true}, {label: "오븐 완료일", hasDate: true}, {label: "포장 시작일", hasDate: true}, {label: "포장 완료일", hasDate: true}, {label: "외부 이동"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] },
+                { groupName: "현곡(인현)_출하", rows: [ { name: "상태", type: "checkbox", items: [ {label: "상차대기"}, {label: "상차중"}, {label: "상차완료"}, {label: "랩핑완료"}, {label: "출하장 이동"} ] }, { name: "이동일자", type: "date" }, { name: "특이사항", type: "textarea" } ] }
             ];
 
             const customModal = document.getElementById('custom-modal');
@@ -337,7 +338,6 @@
                             const productData = processes[groupName]?.products?.[productName]?.[rowName];
                             if (rowDef.type === 'checkbox') {
                                 td.className = 'align-top p-2';
-                                // --- 🎨 디자인 개선: 세로 정렬 ---
                                 const checkboxContainer = document.createElement('div');
                                 checkboxContainer.className = 'flex flex-col gap-y-2';
 
@@ -381,7 +381,8 @@
                                     inputElement.className = 'w-full border rounded p-1 h-20 resize-none text-xs border-slate-300';
                                 } else {
                                     inputElement = document.createElement('input');
-                                    inputElement.type = 'text';
+                                    // ✨ type을 rowDef에서 가져오도록 수정
+                                    inputElement.type = rowDef.type || 'text';
                                     inputElement.className = 'w-full border rounded p-1 border-slate-300';
                                 }
                                 inputElement.value = productData || '';
