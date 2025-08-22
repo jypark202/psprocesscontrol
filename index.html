@@ -18,7 +18,8 @@
         
         .process-table { table-layout: fixed; }
         .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; vertical-align: middle; font-size: 0.8rem; white-space: nowrap; }
-        .process-table .product-col { width: 180px; }
+        /* --- ✨ 제품 열 너비 조정 --- */
+        .process-table .product-col { width: 200px; }
         .process-table thead th { background-color: #f8fafc; font-weight: 600; color: #334155; }
         .process-table .checkbox-label { display: flex; align-items: center; white-space: nowrap; }
         
@@ -398,8 +399,7 @@
                                     if (item.hasDate) {
                                         const dateInput = document.createElement('input');
                                         dateInput.type = 'date';
-                                        // --- ✨ 날짜 칸 너비 최소화 ---
-                                        dateInput.className = 'border rounded p-1 w-28 text-xs border-slate-300';
+                                        dateInput.className = 'border rounded p-1 w-24 text-xs border-slate-300';
                                         dateInput.value = dateValue;
                                         dateInput.dataset.group = groupName; dateInput.dataset.product = productName; dateInput.dataset.row = rowName; dateInput.dataset.detailDate = itemName;
                                         
