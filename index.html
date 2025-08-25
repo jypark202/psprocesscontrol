@@ -18,7 +18,6 @@
         
         .process-table { table-layout: fixed; }
         .process-table th, .process-table td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; vertical-align: middle; font-size: 0.8rem; white-space: nowrap; }
-        /* --- ✨ 제품 열 너비 조정 --- */
         .process-table .product-col { width: 200px; }
         .process-table thead th { background-color: #f8fafc; font-weight: 600; color: #334155; }
         .process-table .checkbox-label { display: flex; align-items: center; white-space: nowrap; }
@@ -95,13 +94,25 @@
             </div>
             <div id="modal-content" class="p-6 overflow-auto bg-slate-50/50">
                 <div class="mb-4">
-                    <h4 class="font-bold text-md mb-2 text-blue-600">기본 정보</h4>
-                    <div class="grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-bold text-md text-blue-600">기본 정보</h4>
+                        <!-- ✨ 기본 정보 수정 버튼 추가 -->
+                        <button id="edit-basic-info-btn" class="bg-slate-200 text-slate-700 px-3 py-1 rounded-md text-xs hover:bg-slate-300">수정</button>
+                    </div>
+                    <div id="basic-info-display" class="grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
                         <div><strong>반입일자:</strong> <span id="modal-date"></span></div>
                         <div><strong>반입라인:</strong> <span id="modal-line"></span></div>
                         <div id="modal-unit-wrapper"><strong>반입호기:</strong> <span id="modal-unit"></span></div>
                         <div id="modal-structure-wrapper"><strong>반입구조:</strong> <span id="modal-structure"></span></div>
                         <div class="col-span-full"><strong>특이사항:</strong> <span id="modal-notes"></span></div>
+                    </div>
+                    <!-- ✨ 기본 정보 수정용 입력 필드 (숨겨짐) -->
+                    <div id="basic-info-edit" class="hidden grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
+                        <div><label class="font-bold">반입일자</label><input type="date" id="edit-date" class="w-full border-slate-300 rounded-md p-1"></div>
+                        <div><label class="font-bold">반입라인</label><input type="text" id="edit-line" class="w-full border-slate-300 rounded-md p-1"></div>
+                        <div id="edit-unit-wrapper"><label class="font-bold">반입호기</label><input type="text" id="edit-unit" class="w-full border-slate-300 rounded-md p-1"></div>
+                        <div id="edit-structure-wrapper"><label class="font-bold">반입구조</label><input type="text" id="edit-structure" class="w-full border-slate-300 rounded-md p-1"></div>
+                        <div class="col-span-full"><label class="font-bold">특이사항</label><input type="text" id="edit-notes" class="w-full border-slate-300 rounded-md p-1"></div>
                     </div>
                 </div>
                 <div id="process-table-container"></div>
@@ -150,6 +161,7 @@
             let unsubscribe = null;
             let currentTaskType = 'baffle-plate';
             let visibleProducts = []; 
+            let isEditingBasicInfo = false; // ✨ 기본 정보 수정 모드 상태
 
             const calendarGrid = document.getElementById('calendar-grid');
             const currentMonthYearEl = document.getElementById('current-month-year');
@@ -171,6 +183,9 @@
             const structureWrapper = document.getElementById('new-task-structure-wrapper');
             const modalUnitWrapper = document.getElementById('modal-unit-wrapper');
             const modalStructureWrapper = document.getElementById('modal-structure-wrapper');
+            const editBasicInfoBtn = document.getElementById('edit-basic-info-btn');
+            const basicInfoDisplay = document.getElementById('basic-info-display');
+            const basicInfoEdit = document.getElementById('basic-info-edit');
 
             const bafflePlateProductNames = ["상판", "견시창", "각도판", "리플렉터", "구성품", "전수", "셋업"];
             const linearProductNames = ["BODY", "NOZZLE", "I/P"];
@@ -300,19 +315,23 @@
                 
                 visibleProducts = currentTask.visibleProducts || []; 
                 
-                document.getElementById('modal-date').textContent = currentTask.date;
-                document.getElementById('modal-line').textContent = currentTask.line;
-                document.getElementById('modal-notes').textContent = currentTask.notes;
+                // ✨ 수정 모드 초기화
+                isEditingBasicInfo = false;
+                toggleBasicInfoEditMode();
+                
+                // ✨ 뷰 & 수정 필드 모두 채우기
+                populateBasicInfoFields();
 
                 if (currentTask.taskType === 'linear') {
                     modalUnitWrapper.style.display = 'block';
                     modalStructureWrapper.style.display = 'none';
-                    document.getElementById('modal-unit').textContent = currentTask.unit;
+                    document.getElementById('edit-unit-wrapper').style.display = 'block';
+                    document.getElementById('edit-structure-wrapper').style.display = 'none';
                 } else {
                     modalUnitWrapper.style.display = 'block';
                     modalStructureWrapper.style.display = 'block';
-                    document.getElementById('modal-unit').textContent = currentTask.unit;
-                    document.getElementById('modal-structure').textContent = currentTask.structure;
+                    document.getElementById('edit-unit-wrapper').style.display = 'block';
+                    document.getElementById('edit-structure-wrapper').style.display = 'block';
                 }
                 
                 renderProcessTable(currentTask.processes, currentTask.taskType);
@@ -563,6 +582,53 @@
                 }
             }
 
+            // --- ✨ 기본 정보 관련 함수 ---
+            function populateBasicInfoFields() {
+                if (!currentTask) return;
+                // 뷰 채우기
+                document.getElementById('modal-date').textContent = currentTask.date;
+                document.getElementById('modal-line').textContent = currentTask.line;
+                document.getElementById('modal-unit').textContent = currentTask.unit;
+                document.getElementById('modal-structure').textContent = currentTask.structure;
+                document.getElementById('modal-notes').textContent = currentTask.notes;
+                // 수정 필드 채우기
+                document.getElementById('edit-date').value = currentTask.date;
+                document.getElementById('edit-line').value = currentTask.line;
+                document.getElementById('edit-unit').value = currentTask.unit;
+                document.getElementById('edit-structure').value = currentTask.structure;
+                document.getElementById('edit-notes').value = currentTask.notes;
+            }
+
+            function saveBasicInfo() {
+                if (!currentTask) return;
+                const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
+                if (taskIndex > -1) {
+                    tasks[taskIndex].date = document.getElementById('edit-date').value;
+                    tasks[taskIndex].line = document.getElementById('edit-line').value;
+                    tasks[taskIndex].unit = document.getElementById('edit-unit').value;
+                    tasks[taskIndex].structure = document.getElementById('edit-structure').value;
+                    tasks[taskIndex].notes = document.getElementById('edit-notes').value;
+                    saveTasks();
+                }
+            }
+
+            function toggleBasicInfoEditMode() {
+                isEditingBasicInfo = !isEditingBasicInfo;
+                if (isEditingBasicInfo) {
+                    basicInfoDisplay.classList.add('hidden');
+                    basicInfoEdit.classList.remove('hidden');
+                    editBasicInfoBtn.textContent = '저장';
+                    editBasicInfoBtn.classList.remove('bg-slate-200', 'hover:bg-slate-300');
+                    editBasicInfoBtn.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                } else {
+                    basicInfoDisplay.classList.remove('hidden');
+                    basicInfoEdit.classList.add('hidden');
+                    editBasicInfoBtn.textContent = '수정';
+                    editBasicInfoBtn.classList.add('bg-slate-200', 'hover:bg-slate-300');
+                    editBasicInfoBtn.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                }
+            }
+
             function startApp() {
                 const today = new Date();
                 currentYear = today.getFullYear();
@@ -574,6 +640,14 @@
                 saveChangesBtn.addEventListener('click', saveChanges);
                 deleteTaskBtn.addEventListener('click', deleteTask);
                 
+                editBasicInfoBtn.addEventListener('click', () => {
+                    if (isEditingBasicInfo) {
+                        saveBasicInfo();
+                        populateBasicInfoFields(); // 저장 후 뷰 업데이트
+                    }
+                    toggleBasicInfoEditMode();
+                });
+
                 const openNewTaskModal = (taskType) => {
                     currentTaskType = taskType;
                     document.getElementById('new-task-date').valueAsDate = new Date();
