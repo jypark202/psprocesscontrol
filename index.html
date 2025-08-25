@@ -98,19 +98,20 @@
                         <h4 class="font-bold text-md text-blue-600">기본 정보</h4>
                         <button id="edit-basic-info-btn" class="bg-slate-200 text-slate-700 px-3 py-1 rounded-md text-xs hover:bg-slate-300">수정</button>
                     </div>
-                    <div id="basic-info-display" class="grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
-                        <div><strong>반입일자:</strong> <span id="modal-date"></span></div>
-                        <div><strong>반입라인:</strong> <span id="modal-line"></span></div>
-                        <div id="modal-unit-wrapper"><strong>반입호기:</strong> <span id="modal-unit"></span></div>
-                        <div id="modal-structure-wrapper"><strong>반입구조:</strong> <span id="modal-structure"></span></div>
-                        <div class="col-span-full"><strong>특이사항:</strong> <span id="modal-notes"></span></div>
+                    <!-- ✨ 기본 정보 디자인 개선 -->
+                    <div id="basic-info-display" class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm border p-4 rounded-md bg-white shadow-sm">
+                        <div><strong class="text-slate-500 mr-2">반입일자:</strong><span id="modal-date" class="font-semibold text-slate-800"></span></div>
+                        <div><strong class="text-slate-500 mr-2">반입라인:</strong><span id="modal-line" class="font-semibold text-slate-800"></span></div>
+                        <div id="modal-unit-wrapper"><strong class="text-slate-500 mr-2">반입호기:</strong><span id="modal-unit" class="font-semibold text-slate-800"></span></div>
+                        <div id="modal-structure-wrapper"><strong class="text-slate-500 mr-2">반입구조:</strong><span id="modal-structure" class="font-semibold text-slate-800"></span></div>
+                        <div class="col-span-full"><strong class="text-slate-500 mr-2">특이사항:</strong><span id="modal-notes" class="font-semibold text-slate-800"></span></div>
                     </div>
-                    <div id="basic-info-edit" class="hidden grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
-                        <div><label class="font-bold">반입일자</label><input type="date" id="edit-date" class="w-full border-slate-300 rounded-md p-1"></div>
-                        <div><label class="font-bold">반입라인</label><input type="text" id="edit-line" class="w-full border-slate-300 rounded-md p-1"></div>
-                        <div id="edit-unit-wrapper"><label class="font-bold">반입호기</label><input type="text" id="edit-unit" class="w-full border-slate-300 rounded-md p-1"></div>
-                        <div id="edit-structure-wrapper"><label class="font-bold">반입구조</label><input type="text" id="edit-structure" class="w-full border-slate-300 rounded-md p-1"></div>
-                        <div class="col-span-full"><label class="font-bold">특이사항</label><input type="text" id="edit-notes" class="w-full border-slate-300 rounded-md p-1"></div>
+                    <div id="basic-info-edit" class="hidden grid grid-cols-2 gap-x-8 gap-y-4 text-sm border p-4 rounded-md bg-white shadow-sm">
+                        <div><label class="font-bold text-slate-600 block mb-1">반입일자</label><input type="date" id="edit-date" class="w-full border-slate-300 rounded-md p-1.5 text-sm"></div>
+                        <div><label class="font-bold text-slate-600 block mb-1">반입라인</label><input type="text" id="edit-line" class="w-full border-slate-300 rounded-md p-1.5 text-sm"></div>
+                        <div id="edit-unit-wrapper"><label class="font-bold text-slate-600 block mb-1">반입호기</label><input type="text" id="edit-unit" class="w-full border-slate-300 rounded-md p-1.5 text-sm"></div>
+                        <div id="edit-structure-wrapper"><label class="font-bold text-slate-600 block mb-1">반입구조</label><input type="text" id="edit-structure" class="w-full border-slate-300 rounded-md p-1.5 text-sm"></div>
+                        <div class="col-span-full"><label class="font-bold text-slate-600 block mb-1">특이사항</label><input type="text" id="edit-notes" class="w-full border-slate-300 rounded-md p-1.5 text-sm"></div>
                     </div>
                 </div>
                 <div id="process-table-container"></div>
@@ -629,6 +630,7 @@
                 
                 editBasicInfoBtn.addEventListener('click', () => {
                     if (isEditingBasicInfo) {
+                        // 임시 저장 로직
                         currentTask.date = document.getElementById('edit-date').value;
                         currentTask.line = document.getElementById('edit-line').value;
                         currentTask.unit = document.getElementById('edit-unit').value;
