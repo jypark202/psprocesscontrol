@@ -96,7 +96,6 @@
                 <div class="mb-4">
                     <div class="flex justify-between items-center mb-2">
                         <h4 class="font-bold text-md text-blue-600">기본 정보</h4>
-                        <!-- ✨ 기본 정보 수정 버튼 추가 -->
                         <button id="edit-basic-info-btn" class="bg-slate-200 text-slate-700 px-3 py-1 rounded-md text-xs hover:bg-slate-300">수정</button>
                     </div>
                     <div id="basic-info-display" class="grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
@@ -106,7 +105,6 @@
                         <div id="modal-structure-wrapper"><strong>반입구조:</strong> <span id="modal-structure"></span></div>
                         <div class="col-span-full"><strong>특이사항:</strong> <span id="modal-notes"></span></div>
                     </div>
-                    <!-- ✨ 기본 정보 수정용 입력 필드 (숨겨짐) -->
                     <div id="basic-info-edit" class="hidden grid grid-cols-4 gap-x-6 gap-y-2 text-xs border p-3 rounded-md bg-white shadow-sm">
                         <div><label class="font-bold">반입일자</label><input type="date" id="edit-date" class="w-full border-slate-300 rounded-md p-1"></div>
                         <div><label class="font-bold">반입라인</label><input type="text" id="edit-line" class="w-full border-slate-300 rounded-md p-1"></div>
@@ -119,7 +117,7 @@
             </div>
             <div class="p-4 border-t flex justify-between items-center bg-slate-50">
                 <button id="delete-task-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">작업 삭제</button>
-                <button id="save-changes" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">공정 현황 저장</button>
+                <button id="save-changes-btn" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">공정 현황 저장</button>
             </div>
         </div>
     </div>
@@ -161,7 +159,7 @@
             let unsubscribe = null;
             let currentTaskType = 'baffle-plate';
             let visibleProducts = []; 
-            let isEditingBasicInfo = false; // ✨ 기본 정보 수정 모드 상태
+            let isEditingBasicInfo = false;
 
             const calendarGrid = document.getElementById('calendar-grid');
             const currentMonthYearEl = document.getElementById('current-month-year');
@@ -172,7 +170,7 @@
             const newTaskModal = document.getElementById('new-task-modal');
             const closeNewTaskModalBtn = document.getElementById('close-new-task-modal');
             const saveNewTaskBtn = document.getElementById('save-new-task-btn');
-            const saveChangesBtn = document.getElementById('save-changes');
+            const saveChangesBtn = document.getElementById('save-changes-btn');
             const deleteTaskBtn = document.getElementById('delete-task-btn');
             const statusIndicator = document.getElementById('status-indicator');
             const statusText = document.getElementById('status-text');
@@ -310,16 +308,14 @@
             }
             
             function openModal(taskId) {
-                currentTask = tasks.find(t => t.id === taskId);
+                currentTask = JSON.parse(JSON.stringify(tasks.find(t => t.id === taskId))); // Deep copy for temporary edits
                 if (!currentTask) return;
                 
                 visibleProducts = currentTask.visibleProducts || []; 
                 
-                // ✨ 수정 모드 초기화
                 isEditingBasicInfo = false;
-                toggleBasicInfoEditMode();
+                updateBasicInfoView();
                 
-                // ✨ 뷰 & 수정 필드 모두 채우기
                 populateBasicInfoFields();
 
                 if (currentTask.taskType === 'linear') {
@@ -500,25 +496,29 @@
             function closeModal() { modal.style.display = 'none'; currentTask = null; }
             function closeNewTaskModal() { newTaskModal.style.display = 'none'; }
 
-            function saveChanges() {
+            function saveAllChanges() {
                 if (!currentTask) return;
+                
+                if (isEditingBasicInfo) {
+                    currentTask.date = document.getElementById('edit-date').value;
+                    currentTask.line = document.getElementById('edit-line').value;
+                    currentTask.unit = document.getElementById('edit-unit').value;
+                    currentTask.structure = document.getElementById('edit-structure').value;
+                    currentTask.notes = document.getElementById('edit-notes').value;
+                }
+
                 const processesToSave = JSON.parse(JSON.stringify(currentTask.processes));
                 const allInputs = modal.querySelectorAll('[data-group][data-product][data-row]');
-
                 allInputs.forEach(input => {
                     const { group, product, row, detail, detailDate } = input.dataset;
                     if (detailDate) return;
-
                     const productProcess = processesToSave[group]?.products?.[product];
                     if (!productProcess) return;
-                    
                     if (detail) {
                         const itemName = detail;
                         if (!productProcess[row]) productProcess[row] = {};
                         if (!productProcess[row][itemName]) productProcess[row][itemName] = {};
-                        
                         productProcess[row][itemName].checked = input.checked;
-
                         const dateInput = modal.querySelector(`[data-detail-date="${itemName}"][data-group="${group}"][data-product="${product}"]`);
                         if (dateInput) {
                             productProcess[row][itemName].date = dateInput.value;
@@ -530,13 +530,16 @@
 
                 const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
                 if(taskIndex > -1){
-                    tasks[taskIndex].processes = processesToSave;
-                    tasks[taskIndex].visibleProducts = visibleProducts;
+                    tasks[taskIndex] = {
+                        ...tasks[taskIndex],
+                        ...currentTask,
+                        processes: processesToSave,
+                        visibleProducts: visibleProducts
+                    };
                     saveTasks();
                 }
                 showCustomAlert('변경사항이 저장되었습니다.');
                 closeModal();
-                if (!unsubscribe) renderCalendar(currentYear, currentMonth);
             }
             
             function saveNewTask() {
@@ -582,16 +585,13 @@
                 }
             }
 
-            // --- ✨ 기본 정보 관련 함수 ---
             function populateBasicInfoFields() {
                 if (!currentTask) return;
-                // 뷰 채우기
                 document.getElementById('modal-date').textContent = currentTask.date;
                 document.getElementById('modal-line').textContent = currentTask.line;
                 document.getElementById('modal-unit').textContent = currentTask.unit;
                 document.getElementById('modal-structure').textContent = currentTask.structure;
                 document.getElementById('modal-notes').textContent = currentTask.notes;
-                // 수정 필드 채우기
                 document.getElementById('edit-date').value = currentTask.date;
                 document.getElementById('edit-line').value = currentTask.line;
                 document.getElementById('edit-unit').value = currentTask.unit;
@@ -599,21 +599,8 @@
                 document.getElementById('edit-notes').value = currentTask.notes;
             }
 
-            function saveBasicInfo() {
-                if (!currentTask) return;
-                const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
-                if (taskIndex > -1) {
-                    tasks[taskIndex].date = document.getElementById('edit-date').value;
-                    tasks[taskIndex].line = document.getElementById('edit-line').value;
-                    tasks[taskIndex].unit = document.getElementById('edit-unit').value;
-                    tasks[taskIndex].structure = document.getElementById('edit-structure').value;
-                    tasks[taskIndex].notes = document.getElementById('edit-notes').value;
-                    saveTasks();
-                }
-            }
-
-            function toggleBasicInfoEditMode() {
-                isEditingBasicInfo = !isEditingBasicInfo;
+            // ✨ 수정된 기본 정보 수정/저장 로직
+            function updateBasicInfoView() {
                 if (isEditingBasicInfo) {
                     basicInfoDisplay.classList.add('hidden');
                     basicInfoEdit.classList.remove('hidden');
@@ -637,15 +624,20 @@
                 prevMonthBtn.addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(currentYear, currentMonth); });
                 nextMonthBtn.addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(currentYear, currentMonth); });
                 closeModalBtn.addEventListener('click', closeModal);
-                saveChangesBtn.addEventListener('click', saveChanges);
+                saveChangesBtn.addEventListener('click', saveAllChanges);
                 deleteTaskBtn.addEventListener('click', deleteTask);
                 
                 editBasicInfoBtn.addEventListener('click', () => {
                     if (isEditingBasicInfo) {
-                        saveBasicInfo();
-                        populateBasicInfoFields(); // 저장 후 뷰 업데이트
+                        currentTask.date = document.getElementById('edit-date').value;
+                        currentTask.line = document.getElementById('edit-line').value;
+                        currentTask.unit = document.getElementById('edit-unit').value;
+                        currentTask.structure = document.getElementById('edit-structure').value;
+                        currentTask.notes = document.getElementById('edit-notes').value;
+                        populateBasicInfoFields();
                     }
-                    toggleBasicInfoEditMode();
+                    isEditingBasicInfo = !isEditingBasicInfo;
+                    updateBasicInfoView();
                 });
 
                 const openNewTaskModal = (taskType) => {
